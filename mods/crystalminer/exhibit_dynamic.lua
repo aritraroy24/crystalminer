@@ -299,11 +299,20 @@ local function request_structure(entry)
 	if not key then
 		finish_load(entry, fallback(entry), "Live structures are off: no Materials Project key (set MP_API in the game folder's .env file)"); return
 	end
-	local stats = { lists = 0, details = 0, tried_ids = {}, tried_elements = {}, rejections = {}, started = os.time() }
+	local stats = { lists = 0, details = 0, tried_ids = {}, tried_elements = {}, rejections = {}, started = os.time(),
+		network_errors = 0 }
 	local names = {}
 	for element in pairs(elements) do names[#names + 1] = element end
 	local function reject(err) local reason = rejection_reason(err); stats.rejections[reason] = (stats.rejections[reason] or 0) + 1 end
 	local function failed() finish_load(entry, fallback(entry), failure_message(stats)) end
+	-- With no network, a wrong key or the API down, every request fails the same way: stop after
+	-- three failures in a row instead of sending up to 90 requests for each room load.
+	local function network_down(err)
+		if err ~= "request failed" and err ~= "http error" and err ~= "timeout" then return false end
+		stats.network_errors = stats.network_errors + 1
+		if stats.network_errors >= 3 then failed(); return true end
+		return false
+	end
 	local function next_list()
 		if stats.lists >= 30 or stats.details >= 60 or os.time() - stats.started >= 60 then failed(); return end
 		local choices = {}
@@ -311,7 +320,8 @@ local function request_structure(entry)
 		if #choices == 0 then failed(); return end
 		local element = choices[math.random(#choices)]; stats.tried_elements[element] = true; stats.lists = stats.lists + 1
 		fetch_json(api_base() .. "/structures/?name__icontains=" .. element .. "&_limit=100&_fields=id,name", key, function(list, err)
-			if not list then reject(err); next_list(); return end
+			if not list then reject(err); if network_down(err) then return end next_list(); return end
+			stats.network_errors = 0
 			list = list.data or list
 			if type(list) ~= "table" then reject("bad JSON"); next_list(); return end
 			for i = #list, 2, -1 do local j = math.random(i); list[i], list[j] = list[j], list[i] end
@@ -323,7 +333,8 @@ local function request_structure(entry)
 				if stats.details >= 60 or os.time() - stats.started >= 60 then failed(); return end
 				local candidate = candidates[index]; stats.details = stats.details + 1
 				fetch_json(api_base() .. "/structures/" .. candidate.id .. "/?_fields=id,name,md5,lattice,sites", key, function(raw, detail_err)
-					if not raw then reject(detail_err); next_detail(index + 1); return end
+					if not raw then reject(detail_err); if network_down(detail_err) then return end next_detail(index + 1); return end
+					stats.network_errors = 0
 					local prepared, prepare_err = pipeline.prepare(raw)
 					if not prepared then reject(prepare_err); next_detail(index + 1); return end
 					local duplicate = false
