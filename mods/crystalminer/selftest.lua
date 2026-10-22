@@ -347,6 +347,23 @@ local function run()
 	local stale = core.add_entity({ x = 0, y = 6, z = -20 }, "crystalminer:sign",
 		core.serialize({ format = "label", text = "old", v = "an earlier build" }))
 	check("a sign from an earlier build of the world removes itself", stale == nil or stale:get_pos() == nil)
+	-- NPCs: added once each, never twice, and one saved by an earlier version removes itself.
+	local function npc_counts()
+		local info, visitors = 0, 0
+		for _, e in pairs(core.luaentities) do
+			if e.name == "crystalminer:guide_npc" and e.object:get_pos() then info = info + 1 end
+			if e.name == "crystalminer:museum_visitor" and e.object:get_pos() then visitors = visitors + 1 end
+		end
+		return info, visitors
+	end
+	cm.npc_refresh(true)
+	cm.npc_refresh(true)
+	local info_n, visitor_n = npc_counts()
+	check("NPCs: one information-desk NPC and eight visitors, no duplicates", info_n == 1 and visitor_n == 8,
+		info_n .. " " .. visitor_n)
+	local old_npc = core.add_entity({ x = 0, y = 1, z = -20 }, "crystalminer:museum_visitor",
+		core.serialize({ slot = 1, home = { x = 0, y = 1, z = -20 } }))
+	check("NPCs: one saved in the map by an earlier version removes itself", old_npc == nil or old_npc:get_pos() == nil)
 	-- Guides: a first arrival marks the place as guided (the window opens a moment later), and the
 	-- window carries the steps; the Try-it Pad has its labels.
 	for _, f in ipairs(cm.on_area) do f("guidetester", "fourfold_tower", live("fourfold_tower")) end

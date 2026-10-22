@@ -23,7 +23,12 @@ local VISITOR_POSITIONS = {
 local NPC_FORMSPEC = "crystalminer:npc"
 local VISITOR_WANDER_RADIUS = 3
 local VISITOR_WALK_SPEED = 0.6
-local npcs_ensured = false
+-- The NPCs are not saved in the map (static_save = false): they exist only while a player is near
+-- and are added again when one comes back. Saved NPCs were added again at every server start and
+-- piled up (one more information-desk NPC and eight more visitors per restart).
+local spawning = false     -- true only while this file adds an NPC; anything else activating is removed
+local live = {}            -- "info" or a visitor slot -> its ObjectRef
+local world_built = false
 
 local function choose_visitor_target(self)
 	local angle = math.random() * math.pi * 2
@@ -46,7 +51,7 @@ end
 core.register_entity(INFO_NAME, {
 	initial_properties = {
 		physical = true,
-		static_save = true,
+		static_save = false,
 		collisionbox = { -0.3, 0, -0.3, 0.3, 1.8, 0.3 },
 		visual = "cube",
 		textures = {
@@ -56,6 +61,10 @@ core.register_entity(INFO_NAME, {
 		},
 		visual_size = { x = 1, y = 2, z = 1 },
 	},
+	on_activate = function(self)
+		-- One saved in the map by an earlier version: remove it (this file adds the current one).
+		if not spawning then self.object:remove() end
+	end,
 	on_rightclick = function(self, clicker)
 		if not clicker or not clicker:is_player() then return end
 		core.show_formspec(clicker:get_player_name(), NPC_FORMSPEC,
@@ -75,7 +84,7 @@ core.register_entity(INFO_NAME, {
 core.register_entity(VISITOR_NAME, {
 	initial_properties = {
 		physical = true,
-		static_save = true,
+		static_save = false,
 		collisionbox = { -0.3, 0, -0.3, 0.3, 1.8, 0.3 },
 		visual = "cube",
 		textures = {
@@ -86,6 +95,7 @@ core.register_entity(VISITOR_NAME, {
 		visual_size = { x = 1, y = 2, z = 1 },
 	},
 	on_activate = function(self, staticdata)
+		if not spawning then self.object:remove(); return end
 		local data = core.deserialize(staticdata or "")
 		local pos = self.object:get_pos()
 		self.slot = data and data.slot
@@ -130,79 +140,57 @@ core.register_entity(VISITOR_NAME, {
 })
 
 local function remove_npcs()
-	npcs_ensured = false
 	for _, object in ipairs(core.get_objects_inside_radius({ x = 0, y = 10, z = 20 }, 110)) do
 		local entity = object:get_luaentity()
 		if entity and (entity.name == INFO_NAME or entity.name == VISITOR_NAME) then object:remove() end
 	end
+	live = {}
 end
 
-local function ensure_entity(pos, entity_name)
-	for _, object in ipairs(core.get_objects_inside_radius(pos, 1)) do
-		local entity = object:get_luaentity()
-		if entity and entity.name == entity_name then return end
+local function alive(object) return object ~= nil and object:get_pos() ~= nil end
+
+-- A player this close is inside the active-block range (active_block_range map blocks, 4 by
+-- default), so an NPC added for them stays active.
+local NEAR = math.max(8, ((tonumber(core.settings:get("active_block_range")) or 4) - 2) * 16)
+local function player_near(pos)
+	for _, player in ipairs(core.get_connected_players()) do
+		local p = player:get_pos()
+		if p and vector.distance(p, pos) <= NEAR then return true end
 	end
-	core.add_entity(pos, entity_name)
+	return false
 end
 
-local function ensure_npcs()
-	if npcs_ensured then return end
-	npcs_ensured = true
-	ensure_entity(INFO_POS, INFO_NAME)
+local function spawn(key, pos, entity_name, staticdata)
+	spawning = true
+	local object = core.add_entity(pos, entity_name, staticdata)
+	spawning = false
+	live[key] = object
+end
 
-	local visitors = {}
-	for _, object in ipairs(core.get_objects_inside_radius({ x = 0, y = 10, z = 20 }, 110)) do
-		local entity = object:get_luaentity()
-		if entity and entity.name == VISITOR_NAME then
-			visitors[#visitors + 1] = object
-		end
-	end
-
-	local used = {}
+--- Adds each NPC that is missing and has a player near its place (or every missing one with always).
+local function ensure_npcs(always)
+	if not world_built then return end
+	if not alive(live.info) and (always or player_near(INFO_POS)) then spawn("info", INFO_POS, INFO_NAME) end
 	for slot, visitor in ipairs(VISITOR_POSITIONS) do
-		local match
-		for _, object in ipairs(visitors) do
-			local entity = object:get_luaentity()
-			if not used[object] and entity and entity.slot == slot then
-				match = object
-				break
-			end
+		local home = { x = visitor.x, y = visitor.y, z = visitor.z }
+		if not alive(live[slot]) and (always or player_near(home)) then
+			spawn(slot, home, VISITOR_NAME, core.serialize({ slot = slot, home = home }))
 		end
-		if not match then
-			local nearest_distance = 8
-			for _, object in ipairs(visitors) do
-				local distance = vector.distance(object:get_pos(), visitor)
-				if not used[object] and distance < nearest_distance then
-					match = object
-					nearest_distance = distance
-				end
-			end
-		end
-
-		if match then
-			used[match] = true
-			local entity = match:get_luaentity()
-			entity.slot = slot
-			entity.home = { x = visitor.x, y = visitor.y, z = visitor.z }
-			entity.message = visitor.message
-			if vector.distance(match:get_pos(), visitor) > VISITOR_WANDER_RADIUS + 1 then
-				match:set_pos(visitor)
-			end
-		else
-			core.add_entity(visitor, VISITOR_NAME,
-				core.serialize({ slot = slot, home = visitor }))
-		end
-	end
-
-	for _, object in ipairs(visitors) do
-		if not used[object] then object:remove() end
 	end
 end
+cm.npc_refresh = ensure_npcs
 
 table.insert(cm.on_clear, remove_npcs)
-table.insert(cm.on_build, ensure_npcs)
+table.insert(cm.on_build, function() world_built = true; ensure_npcs() end)
+cm.when_ready(function() world_built = true end)
 
-core.after(0, ensure_npcs)
+local npc_timer = 0
+core.register_globalstep(function(dtime)
+	npc_timer = npc_timer + dtime
+	if npc_timer < 2 then return end
+	npc_timer = 0
+	ensure_npcs()
+end)
 
 core.register_on_player_receive_fields(function(player, formname, fields)
 	if formname ~= NPC_FORMSPEC or fields.quit then return end
