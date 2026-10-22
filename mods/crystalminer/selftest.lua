@@ -299,7 +299,7 @@ local function run()
 		and exhibit_command.params == "list")
 	check("exhibit migration stamp is current", cm.storage:get_string("exhibit_version") == cm.exhibit_version,
 		cm.storage:get_string("exhibit_version"))
-	check("world version remains 15", cm.WORLD_VERSION == "15" and cm.storage:get_string("world_version") == "15",
+	check("world version is 22", cm.WORLD_VERSION == "22" and cm.storage:get_string("world_version") == "22",
 		cm.WORLD_VERSION .. "/" .. cm.storage:get_string("world_version"))
 	for _, room in ipairs(cm.exhibit_rooms or {}) do
 		local entry = cm.exhibit_dynamic_records and cm.exhibit_dynamic_records[room.number]
@@ -371,6 +371,25 @@ local function run()
 		if here ~= "air" or above ~= "air" then blocked[#blocked + 1] = core.pos_to_string(p) .. " " .. here .. "/" .. above end
 	end
 	check("NPCs: every NPC stands in free space, not inside furniture", #blocked == 0, table.concat(blocked, ", "))
+	-- The desk NPC opens Prism's chat, the one window for questions; /ask does too, and /ask <question> asks there.
+	do
+		local saved_open, opened = cm.open_tutor, {}
+		cm.open_tutor = function(n, q) opened[#opened + 1] = { n, q } end
+		local desk_npc
+		for _, e in pairs(core.luaentities) do
+			if e.name == "crystalminer:guide_npc" and e.object:get_pos() then desk_npc = e end
+		end
+		local fake = { is_player = function() return true end, get_player_name = function() return "desker" end }
+		if desk_npc then desk_npc:on_rightclick(fake) end
+		check("NPCs: the desk NPC opens Prism's chat", #opened == 1 and opened[1][1] == "desker" and opened[1][2] == nil,
+			tostring(#opened))
+		local ask = core.registered_chatcommands.ask
+		local ok1 = ask.func("asker", "")
+		local ok2 = ask.func("asker", "  What is a mirror?  ")
+		check("/ask opens Prism's chat; /ask <question> asks there", ok1 and ok2 and #opened == 3
+			and opened[2][2] == "" and opened[3][2] == "What is a mirror?", tostring(#opened))
+		cm.open_tutor = saved_open
+	end
 	-- Guides: a first arrival marks the place as guided (the window opens a moment later), and the
 	-- window carries the steps; the Try-it Pad has its labels.
 	for _, f in ipairs(cm.on_area) do f("guidetester", "fourfold_tower", live("fourfold_tower")) end
@@ -396,6 +415,48 @@ local function run()
 	end
 	check("every sculpture stands on its plinth", sculpted == #cm.SCULPTURES.list, tostring(sculpted))
 	check("the front door opens", core.get_node({ x = -1, y = 2, z = cm.lobby.Z0 }).name == "crystalminer:door_top_open")
+
+	-- Prism, the AI tutor: on the information desk, and a chat that keeps the conversation. The HTTP call is swapped for one that answers at once; the self-test server has no tutor configured.
+	local desk = cm.TUTOR_DESK
+	check("tutor: the screen stands on the information desk",
+		core.get_node({ x = desk.x, y = 3, z = desk.z }).name == "crystalminer:tutor_screen"
+		and core.get_node({ x = desk.x, y = 2, z = desk.z }).name == "crystalminer:marble")
+	check("tutor: Prism floats behind it", core.get_node({ x = desk.x, y = 5, z = desk.z - 2 }).name == "crystalminer:tutor_prism")
+	local tu, Tm = cm.tutor, cm.tutor.T
+	local saved_on, saved_send, sent = tu.on, Tm.send, nil
+	tu.on = true
+	Tm.send = function(_, _, body, _, _, cb) sent = body cb("A **mirror** reflects.", nil) end
+	cm.tutor_ask("chatter", "What is a mirror?")
+	local c = cm.tutor_chats["chatter"]
+	check("tutor: a question and its answer are kept", c and #c.msgs == 2 and c.msgs[1].role == "user"
+		and c.msgs[2].role == "assistant" and not c.waiting, c and tostring(#c.msgs))
+	check("tutor: the question went out with the chat prompt", sent ~= nil, "nothing sent")
+	local bst = cm.billboard_state()
+	check("billboard: shows the latest question and answer", bst.mode == "answer" and bst.q == "What is a mirror?"
+		and bst.a == "A **mirror** reflects.", bst.mode)
+	local boards, facing = 0, true
+	for _, obj in ipairs(core.get_objects_inside_radius({ x = 40, y = 9.5, z = -49.48 }, 1.5)) do
+		local e = obj:get_luaentity()
+		if e and e.name == "crystalminer:billboard" then
+			boards = boards + 1
+			facing = facing and math.abs(obj:get_yaw() - cm.SG.YAW.n) < 0.01
+		end
+	end
+	check("billboard: hangs above Prism's desk, facing the room", boards == 1 and facing,
+		boards .. " " .. tostring(facing))
+	check("billboard: its mount in the wall puts it back if it is lost",
+		core.get_node(cm.BILLBOARD.AT.wall).name == "crystalminer:billboard_mount" and cm.BILLBOARD.present())
+	local fs = cm.tutor_formspec("chatter")
+	check("tutor: the window shows the welcome, the answer in bold and the question box",
+		fs:find("Prism", 1, true) and fs:find("<b>mirror</b>", 1, true) and fs:find("field[5.35,9.25;9.9,0.85;msg;;]", 1, true)
+		and fs:find("scroll_container_end[]", 1, true), fs:sub(1, 200))
+	cm.tutor_ask("chatter", "Again?")
+	check("tutor: too soon again shows a friendly wait", c.notice and c.notice:find("ask again"), tostring(c.notice))
+	tu.on = false
+	cm.tutor_ask("sleepy", "Hello?")
+	check("tutor: switched off, it says so instead of sending",
+		cm.tutor_chats["sleepy"].notice == content.tutor.off and #cm.tutor_chats["sleepy"].msgs == 0)
+	tu.on, Tm.send = saved_on, saved_send
 
 	-- Tour: a visitor on the tour may build at a tour stop above their tier, and not elsewhere.
 	cm.tour_state["visitor"] = { i = 3 }
@@ -506,16 +567,16 @@ local function run()
 	check("free lab accepts 4mm", lab.symbol == "4mm" and #lab.region.group.ops == 8, lab.symbol)
 
 	-- Symmetry markers: one endless particle spawner per dot, added and deleted only on change.
-	-- The engine call is real here once (no player is connected, so a playername fails with -1);
-	-- for the rest the spawner functions are swapped for counters.
+	-- The engine call is real here once; for the rest the spawner functions are swapped for counters. For a player who is not here, 5.4 and 5.6 fail with -1 (seen as 4294967295), while 5.17 hands out an id and sends nothing. Either way spawner_ok must tell the two apart (see test_elements.lua).
 	local kl = live("kaleidoscope")
 	local probe = cm.E.marker_def(kl.dots[1], nil)
 	local real = core.add_particlespawner(probe)
 	check("markers: the engine accepts the spawner definition", cm.E.spawner_ok(real), tostring(real))
 	if cm.E.spawner_ok(real) then core.delete_particlespawner(real) end
-	local failed = core.add_particlespawner(cm.E.marker_def(kl.dots[1], "nobody_here"))
-	check("markers: a spawner for a player who is not here is recognised as failed",
-		not cm.E.spawner_ok(failed), tostring(failed))
+	local absent = core.add_particlespawner(cm.E.marker_def(kl.dots[1], "nobody_here"))
+	check("markers: a spawner for a player who is not here is a failure or a new id",
+		absent == 4294967295 or absent == -1 or (cm.E.spawner_ok(absent) and absent ~= real), tostring(absent))
+	if cm.E.spawner_ok(absent) then core.delete_particlespawner(absent) end
 	local api, shown, adds, defs_ok = cm.marker_api, {}, 0, true
 	local saved_add, saved_delete = api.add, api.delete
 	local function count() local n = 0 for _ in pairs(shown) do n = n + 1 end return n end
@@ -718,6 +779,7 @@ cm.when_exhibits_ready(function()
 	local spots = { { x = 0, y = 5, z = -30 } }
 	for _, d in ipairs(cm.G.displays(content.gate.at)) do spots[#spots + 1] = { x = d.look_at.x, y = 7, z = -30 } end
 	spots[#spots + 1] = { x = cm.PAD_BUILD.x - 2, y = 4, z = cm.PAD_BUILD.z }
+	spots[#spots + 1] = { x = 40, y = 9, z = -49 }   -- Prism's billboard
 	for _, live in ipairs(cm.regions) do
 		local pl = cm.D.plaza(live.region)
 		spots[#spots + 1] = { x = pl.arrive.x, y = 8, z = pl.arch_z }

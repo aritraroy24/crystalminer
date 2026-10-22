@@ -191,7 +191,7 @@ end
 
 --- Whether add_particlespawner succeeded. The docs say it returns -1 on failure, but the engine
 -- (5.4.1 and 5.17.0, l_add_particlespawner) pushes that as a u32, so Lua sees 4294967295;
--- 5.17 also returns 0 when it has run out of ids. Real ids start at 1.
+-- 5.17 also returns 0 when it has run out of ids. Real ids start at 1. Note that 5.17 no longer fails for a player who is not connected: it returns an id and sends nothing.
 function E.spawner_ok(id)
 	return type(id) == "number" and id >= 1 and id < 4294967295
 end

@@ -94,8 +94,11 @@ informed consent; the notice in the game is not a substitute.
 - The game has been played by its developers but **not yet by students**, and the learning check
   has not yet produced data. We make no claims about learning outcomes.
 - The first start of a new world takes about half a minute.
-- The tutor (`/ask`) uses either the paid Claude API or a free open-source model on your own
-  computer (see "The AI tutor" in the README). The Claude path has not been run against the live API.
+- The AI tutor, Prism (`/ask`, or the information desk), needs an API key for a hosted model
+  (DeepSeek by default, or Claude and others) or a free open-source model on your own computer (see
+  "The AI tutor" in the README). We have run it only with a local open model; DeepSeek and Claude
+  have not been run live by us. Prism's billboard in Visitor information shows every student's
+  latest question, without the name, to everyone in the room.
 - The Free Lab's symmetry is shared by everyone on the server and resets when the server restarts.
   The Try-it Pad is also shared: students take turns.
 - Worlds made with an earlier version are rebuilt on start; blocks built there before are not

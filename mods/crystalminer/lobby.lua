@@ -189,7 +189,7 @@ local function build_signs()
 	SG.on_wall({ x = -8, y = GROUND + 4, z = -30 }, "s", "board", LB.welcome)
 	SG.on_wall({ x = -0.5, y = GROUND + 5.5, z = -30 }, "s", "banner", "# GALLERY 1\nFour kinds of symmetry")
 	SG.on_wall({ x = -21, y = GROUND + 5.5, z = -40.5 }, "e", "banner", "# WORKSHOP\nThe Try-it Pad")
-	SG.on_wall({ x = 21, y = GROUND + 5.5, z = -40.5 }, "w", "banner", "# VISITOR INFORMATION\nHow to explore")
+	SG.on_wall({ x = 21, y = GROUND + 5.5, z = -40.5 }, "w", "banner", "# VISITOR INFORMATION\nHow to explore · Ask Prism, the AI tutor")
 	-- Workshop and information room.
 	local GD = cm.GUIDES
 	SG.on_wall({ x = -50, y = GROUND + 4, z = -30 }, "s", "board", GD.board_text(GD.tryit_pad))
@@ -220,7 +220,7 @@ local function build_signs()
 	SG.on_wall({ x = 21.5, y = GROUND + 5.5, z = -4 }, "s", "banner", "# GALLERY 3\nCrystals at the atomic scale")
 	SG.on_wall({ x = -40.5, y = GROUND + 5.5, z = -30 }, "n", "banner", "# WORKSHOP\nThe Try-it Pad")
 	SG.on_wall({ x = -0.5, y = GROUND + 5.5, z = -30 }, "n", "banner", "# FOYER\nWay out, welcome and map")
-	SG.on_wall({ x = 39.5, y = GROUND + 5.5, z = -30 }, "n", "banner", "# VISITOR INFORMATION\nHow to explore")
+	SG.on_wall({ x = 39.5, y = GROUND + 5.5, z = -30 }, "n", "banner", "# VISITOR INFORMATION\nHow to explore · Ask Prism, the AI tutor")
 	-- Gallery 2: the introduction at the far end, then the timeline, alternating west and east.
 	SG.on_wall({ x = -32, y = GROUND + 4, z = 60 }, "s", "board", LB.gallery2)
 	local slots = { 4, 12, 28, 36, 44, 52 }

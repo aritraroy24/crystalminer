@@ -83,13 +83,12 @@ local function furnish()
 	for _, p in ipairs({ { -59, -49 }, { -22, -49 }, { -59, -31 }, { -22, -31 } }) do plant(p[1], p[2]) end
 	bench(-33, -31, -33, -33, "s")
 	bench(-57, -55, -33, -33, "s")
-	-- Visitor information: a desk, a plan of the museum behind it, plants.
+	-- Visitor information: a desk and plants. Prism, the AI tutor, sits on the desk (tutor_window.lua), with its billboard high on the wall behind (billboard.lua); the banner is on the desk's front, below Prism's screen.
 	for x = 36, 44 do
 		set(x, GROUND + 1, -45, "crystalminer:planks")
 		set(x, GROUND + 2, -45, "crystalminer:marble")
 	end
-	SG.place({ x = 40, y = GROUND + 3.6, z = -45 + 0.52 }, "n", "banner", "# INFORMATION\nAsk, read, and take the tour: /tour")
-	SG.place_picture({ x = 40, y = GROUND + 7.2, z = cm.lobby.Z0 + 0.52 }, "n", "crystalminer_art_plan.png", 6, 4.5)
+	SG.place({ x = 40, y = GROUND + 1.5, z = -45 + 0.52 }, "n", "banner", cm.content.tutor.desk)
 	for _, p in ipairs({ { 22, -49 }, { 59, -49 }, { 59, -31 } }) do plant(p[1], p[2]) end
 	bench(26, 28, -36, -36, "n")
 	-- Gallery 1: benches facing the displays, plants in the corners.
@@ -112,6 +111,8 @@ local function furnish()
 	for x = -45, 45, 30 do bench(x - 2, x + 2, 72, 72, "n") end
 	for _, p in ipairs({ { -59, 61 }, { 59, 61 } }) do plant(p[1], p[2]) end
 	for _, s in ipairs(SC.list) do sculpture(s) end
+	-- The plan of the museum, at eye level in the foyer just east of the front door, where its small lettering can be read (tools/make_figures.py marks "you are here" there).
+	SG.place_picture({ x = 7, y = GROUND + 2.6, z = cm.lobby.Z0 + 0.52 }, "n", "crystalminer_art_plan.png", 4, 3)
 	-- Framed pictures: the four kinds of symmetry, in the foyer opposite the welcome board.
 	SG.place_picture({ x = 8, y = GROUND + 4.5, z = -30 - 0.52 }, "s", "crystalminer_art_four.png", 4.4, 4.4)
 end

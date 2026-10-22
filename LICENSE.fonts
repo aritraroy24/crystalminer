@@ -3,7 +3,9 @@ Fonts used for the lettering on signs and in figures
 The glyph textures
 (mods/crystalminer/textures/crystalminer_{b52,c44,b34,b26,b17,r24,r20,r18,r16}_*.png) and the text
 in the generated figures are rendered from DejaVu Sans, DejaVu Sans Bold and DejaVu Sans Condensed
-Bold (https://dejavu-fonts.github.io/). DejaVu changes are in the public domain; the fonts are
+Bold (https://dejavu-fonts.github.io/). The pixel glyphs of Prism's billboard
+(mods/crystalminer/textures/crystalminer_px_*.png, made by tools/make_pixel_font.py) are rendered
+from DejaVu Sans Mono Bold. DejaVu changes are in the public domain; the fonts are
 derived from Bitstream Vera, whose licence follows.
 
 Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved. Bitstream Vera is a trademark of
