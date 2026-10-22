@@ -57,6 +57,26 @@ function L.question(content, id)
 	return nil
 end
 
+--- The questions of one area that a player at `tier` may review: every tier from 0 up to and
+--- including `tier`, lowest tier first. Never a question above `tier` (no spoilers).
+function L.review_questions(area, tier)
+	local out = {}
+	for _, t in ipairs(sorted_tiers(area.quiz)) do
+		if t <= tier then
+			for _, q in ipairs(L.questions(area, t)) do out[#out + 1] = q end
+		end
+	end
+	return out
+end
+
+--- The k-th review question of an area (k = 1, 2, 3 ...; it wraps round), or nil if the area has
+--- none at or below `tier`.
+function L.review_pick(area, tier, k)
+	local qs = L.review_questions(area, tier)
+	if #qs == 0 then return nil end
+	return qs[(math.max(1, math.floor(k or 1)) - 1) % #qs + 1]
+end
+
 function L.max_tier(content)
 	local m = 0
 	for k in pairs(content.tiers) do m = math.max(m, k) end

@@ -239,7 +239,7 @@ Stalke, *J. Appl. Cryst.* 55, 144–148, 2022), get the most help.
 |---|---|
 | `/guide` | List what you can do |
 | `/explain` | Show the guide for this place again |
-| `/quiz` | Answer questions to unlock the next tier |
+| `/quiz` | Answer questions to unlock the next tier (where you have none left, a review question that does not change your tier) |
 | `/progress` | Show your tier |
 | `/regions`, `/goto <region>`, `/spawn` | List the worlds, travel to one, go back to the foyer |
 | `/elements <all\|axes\|mirrors\|centres\|cells\|none>` | Choose which symmetry markers to show |
@@ -373,6 +373,7 @@ This runs the unit tests (it skips them if no Lua is installed), then starts a r
 | `test_guides.lua` | Every guide's numbers match the engine |
 | `test_next_hint.lua` | The "Next:" line |
 | `test_billboard.lua` | The billboard's lines, typing, overflow and texture size; every glyph exists |
+| `test_lessons.lua` | Review questions for `/quiz`: none above the player's tier, cycling |
 | `test_tutor.lua` | Tutor request building and response handling, the DeepSeek preset, chat history |
 
 The self-test (`mods/crystalminer/selftest.lua`) places and digs blocks through the registered

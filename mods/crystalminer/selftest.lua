@@ -419,6 +419,82 @@ local function run()
 	check("quiz window greys out a wrong option and shows the hint",
 		qfs:find("not this one", 1, true) ~= nil and qfs:find("opt_0", 1, true) == nil and qfs:find("mirror image", 1, true) ~= nil)
 
+	-- Review questions: /quiz in a place with nothing open at the player's tier asks one of its
+	-- questions from that tier or below, and answering it changes nothing that is stored.
+	do
+		local pending = cm.pending_question
+		local function submit(who, fields)
+			local fake = { get_player_name = function() return who end }
+			for _, f in ipairs(core.registered_on_player_receive_fields) do
+				local ok, handled = pcall(f, fake, "crystalminer:quiz", fields)
+				if not ok then return false, handled end
+				if handled then return true end
+			end
+			return true
+		end
+		local who = "reviewer"
+		local rp = cm.progress(who)
+		rp.tier = 4
+		cm.save_progress(who)
+		cm.current_area[who] = content.gate.id
+		local stored = cm.storage:get_string("progress:" .. who)
+		local rec = core.serialize(cm.record(who))
+		cm.show_quiz(who)
+		local st = pending[who]
+		check("review: a tier-4 player in Gallery 1 gets a Gate question as a review",
+			st and st.review == true and st.id:find("^symmetry_gate%.0%.") ~= nil, st and st.id)
+		local q = st and L.question(content, st.id)
+		check("review: the quiz window says it does not change the tier",
+			q and cm.quiz_formspec(q, st):find(content.quiz_review.label, 1, true) ~= nil)
+		local first = st and st.id
+		pending[who] = nil
+		cm.show_quiz(who, true)
+		check("review: not offered right after a correct answer (the player is told where to go instead)",
+			pending[who] == nil)
+		pending[who] = st
+		cm.show_quiz(who)
+		check("review: /quiz again shows a different question", pending[who] and pending[who].id ~= first,
+			pending[who] and pending[who].id)
+		st = pending[who]
+		q = st and L.question(content, st.id)
+		local wrong = q and (q.answer + 1) % #q.options
+		local ok1, err1 = submit(who, { ["opt_" .. tostring(wrong)] = "x" })
+		check("review: a wrong answer greys out the option and shows the hint", ok1 and pending[who] == st
+			and st.review == true and st.wrong[wrong] == true and (st.feedback or ""):find(q.hint, 1, true) ~= nil, tostring(err1))
+		local ok2, err2 = submit(who, { ["opt_" .. tostring(q and q.answer)] = "x" })
+		check("review: a right answer closes the question", ok2 and pending[who] == nil, tostring(err2))
+		check("review: answering leaves the tier and the answered questions unchanged",
+			rp.tier == 4 and next(rp.answered) == nil and cm.progress(who).tier == 4, tostring(rp.tier))
+		check("review: nothing stored changes (progress, learning record)",
+			cm.storage:get_string("progress:" .. who) == stored and core.serialize(cm.record(who)) == rec)
+		check("review: answer() still refuses a question below the tier", cm.answer(who, first, L.question(content, first).answer) == false
+			and next(rp.answered) == nil and rp.tier == 4)
+
+		-- No spoilers: a tier-2 player in Mirror Plaza (questions at tiers 1 and 3) reviews only tier 1.
+		local w2 = "reviewer2"
+		cm.progress(w2).tier = 2
+		cm.current_area[w2] = "mirror_plaza"
+		local tiers_ok, n = true, #L.questions(L.area(content, "mirror_plaza"), 1)
+		for _ = 1, 2 * n + 1 do
+			cm.show_quiz(w2)
+			local s = pending[w2]
+			if not (s and s.review and s.id:find("^mirror_plaza%.1%.")) then tiers_ok = false end
+		end
+		check("review: never a question above the player's tier", tiers_ok)
+		cm.current_area[w2] = ""
+		pending[w2] = nil
+		cm.show_quiz(w2)
+		check("review: outside any place, /quiz still only lists where questions wait", pending[w2] == nil)
+
+		-- A tier-0 player in Gallery 1 still gets the normal first Gate question.
+		local w0 = "gate_newbie"
+		cm.current_area[w0] = content.gate.id
+		cm.show_quiz(w0)
+		check("review: a tier-0 player still gets the normal Gate question", pending[w0] and not pending[w0].review
+			and pending[w0].id == L.questions(content.gate, 0)[1].id, pending[w0] and pending[w0].id)
+		for _, w in ipairs({ who, w2, w0 }) do pending[w] = nil; cm.current_area[w] = nil end
+	end
+
 	-- Free Lab: a hexagonal group is refused, 4mm is applied.
 	local lab = live("free_lab")
 	cm.apply_symmetry("teacher_test", lab, "6mm")

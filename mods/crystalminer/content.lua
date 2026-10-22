@@ -141,6 +141,13 @@ return {
 			},
 		},
 	},
+	-- /quiz in a place whose questions for the player's tier are all answered (or that only has
+	-- questions of lower tiers) asks one of that place's questions again, as a review.
+	quiz_review = {
+		label = "Review question: answering it does not change your tier.",
+		correct = "That was a review question, so your tier stays the same. Type /quiz for another one.",
+		elsewhere = "The questions for your tier are in other places: press I to see where.",
+	},
 	gate = {
 		id = "symmetry_gate",
 		name = "Symmetry Gate",

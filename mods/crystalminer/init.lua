@@ -1055,17 +1055,24 @@ end)
 
 ---------------------------------------------------------------------------- quiz
 
--- Per player: { id = question id, wrong = { [choice] = true }, feedback = text }.
+-- Per player: { id = question id, wrong = { [choice] = true }, feedback = text, review = true for a
+-- review question (answered with review_answer, which changes no progress) }.
 local pending_question = {}
+crystalminer.pending_question = pending_question   -- read by the self-test
 
 local function quiz_formspec(q, state)
 	local n = #q.options
 	local fb = state and state.feedback
-	local h = 2.3 + (fb and 1.1 or 0) + 0.95 * n
+	-- A review question (state.review) has a line at the top saying it does not change the tier.
+	local top = (state and state.review) and 0.6 or 0
+	local h = 2.3 + top + (fb and 1.1 or 0) + 0.95 * n
 	-- Anchored to the bottom of the screen without dimming it, so the scene stays visible.
-	local fs = { "formspec_version[4]size[12,", h, "]position[0.5,0.97]anchor[0.5,1]bgcolor[#1E2433E6;false]",
-		"textarea[0.4,0.35;11.2,1.5;;;", core.formspec_escape(q.q), "]" }
-	local y = 1.95
+	local fs = { "formspec_version[4]size[12,", h, "]position[0.5,0.97]anchor[0.5,1]bgcolor[#1E2433E6;false]" }
+	if top > 0 then
+		fs[#fs + 1] = "label[0.4,0.45;" .. core.formspec_escape(core.colorize("#40C0FF", content.quiz_review.label)) .. "]"
+	end
+	fs[#fs + 1] = "textarea[0.4," .. (0.35 + top) .. ";11.2,1.5;;;" .. core.formspec_escape(q.q) .. "]"
+	local y = 1.95 + top
 	if fb then
 		fs[#fs + 1] = "textarea[0.4," .. y .. ";11.2,1;;;" .. core.formspec_escape(fb) .. "]"
 		y = y + 1.1
@@ -1111,7 +1118,13 @@ local function ask_question(name, q, state)
 	core.show_formspec(name, "crystalminer:quiz", quiz_formspec(q, state))
 end
 
-local function show_quiz(name)
+-- Which review question each player gets next, per area: name -> { [area id] = k }. In memory
+-- only; it just makes repeated /quiz show different questions.
+local review_turn = {}
+
+--- /quiz. no_review: only questions that count (used right after a correct answer, so the player
+--- is then told where the remaining questions are rather than handed a review).
+local function show_quiz(name, no_review)
 	local p = progress(name)
 	local here = current_area[name] or ""
 	local area = p.tier == 0 and content.gate or L.area(content, here)
@@ -1121,6 +1134,20 @@ local function show_quiz(name)
 				ask_question(name, q)
 				return
 			end
+		end
+	end
+	-- Nothing open here at the player's tier: review a question of this place from the player's
+	-- tier or below (never above it), if it has any. Reviews change no progress.
+	local here_area = not no_review and L.area(content, here)
+	if here_area then
+		local turns = review_turn[name] or {}
+		review_turn[name] = turns
+		local k = turns[here_area.id] or 1
+		local q = L.review_pick(here_area, p.tier, k)
+		if q then
+			turns[here_area.id] = k + 1
+			ask_question(name, q, { id = q.id, wrong = {}, review = true })
+			return
 		end
 	end
 	local open = {}
@@ -1168,6 +1195,21 @@ local function answer(name, id, choice)
 	return true
 end
 crystalminer.answer = answer
+
+--- Checks the answer to a review question: the same "Correct!" feedback, but it changes nothing
+--- that is stored (answered questions, tier, learning records). Returns true if correct.
+local function review_answer(name, id, choice)
+	local q, tier = L.question(content, id)
+	local p = progress(name)
+	-- Only questions at or below the player's tier can be reviewed.
+	if not q or tier > p.tier then return false end
+	if choice ~= q.answer then return false end
+	say(name, core.colorize("#60FF60", "Correct! ") .. q.why)
+	say(name, content.quiz_review.correct, "#A0A0A0")
+	if L.remaining(content, p) > 0 then say(name, content.quiz_review.elsewhere, "#A0A0A0") end
+	return true
+end
+crystalminer.review_answer = review_answer
 
 local function teleport(name, id) end -- defined below; used by the board buttons
 
@@ -1222,11 +1264,18 @@ core.register_on_player_receive_fields(function(player, formname, fields)
 		if choice then
 			choice = tonumber(choice)
 			local q = L.question(content, state.id)
-			if answer(name, state.id, choice) then
+			local correct
+			if state.review then
+				correct = review_answer(name, state.id, choice)
+			else
+				correct = answer(name, state.id, choice)
+			end
+			if correct then
 				crystalminer.sound("crystalminer_right", name)
 				pending_question[name] = nil
 				core.close_formspec(name, "crystalminer:quiz")
-				core.after(0.2, function() show_quiz(name) end)
+				-- After a review, the player asks for the next one with /quiz (no endless chain).
+				if not state.review then core.after(0.2, function() show_quiz(name, true) end) end
 			elseif q then
 				crystalminer.sound("crystalminer_wrong", name)
 				state.wrong[choice] = true
