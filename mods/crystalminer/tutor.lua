@@ -535,6 +535,19 @@ function T.chat_request(cfg, history, question, tier, place)
 		temperature = T.OPENAI_TEMPERATURE }
 end
 
+--- Sends one chat question (tutor_window.lua). The chat prompt, with the galleries' texts and the conversation, is longer than /ask's; a local server with a small context (4096 tokens, as llama.cpp and Ollama often run) refuses it. Then the question is asked once more the shorter /ask way: the /ask reference, no history, the /ask answer length.
+function T.send_chat(http, cfg, history, question, tier, place, encode, decode, callback)
+	local body = T.chat_request(cfg, history, question, tier, place)
+	if cfg.provider ~= "openai_compatible" then return T.send(http, cfg, body, encode, decode, callback) end
+	T.send(http, cfg, body, encode, decode, function(text, err)
+		if text == nil and type(err) == "string" and err:find("(error 4", 1, true) and err:lower():find("context", 1, true) then
+			T.send(http, cfg, T.ask_request(cfg, question, tier, place), encode, decode, callback)
+			return
+		end
+		callback(text, err)
+	end)
+end
+
 --- Request body for /symmetry. mode (openai_compatible only) is one of T.RESPONSE_FORMATS.
 function T.symmetry_request(cfg, description, mode)
 	local a = T.symmetry_body(description)
@@ -594,7 +607,8 @@ function T.openai_response_text(response, code)
 	code = tonumber(code) or 200
 	if response.error ~= nil or code >= 400 then
 		local detail = error_detail(response)
-		return nil, T.http_error_message(code) .. (detail and ": " .. detail or "")
+		local msg = T.http_error_message(code)
+		return nil, detail and (msg:gsub("%.$", "") .. ": " .. detail) or msg
 	end
 	local choice = type(response.choices) == "table" and response.choices[1]
 	if type(choice) ~= "table" then return nil, "The tutor sent an unreadable reply." end

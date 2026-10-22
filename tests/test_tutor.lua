@@ -651,15 +651,16 @@ T.run("old settings: openai_compatible at https://api.deepseek.com is DeepSeek",
 end)
 
 T.run("provider error details never show an API key", function()
-	local key = "sk-0123456789abcdef0123456789abcdef"
+	-- Fake keys are put together here, so that no key-shaped string is in the repository.
+	local key = "sk-" .. ("0a1b"):rep(8)
 	local _, err = Tutor.openai_response_text({ error = { message = "Authentication Fails, Your api key: " .. key .. " is invalid" } }, 401)
 	T.ok(not err:find("0123456789abcdef", 1, true), err)
 	T.ok(err:find("refused the API key", 1, true), err)
-	for _, m in ipairs({ "Incorrect API key provided: sk-proj-AbCdEf12****wxyz.", "bad header Bearer abc.def-ghi",
-		"API key not valid: AIzaSyA1b2C3d4E5f6G7h8I9j0KlMnOpQrStUv", "Invalid API Key gsk_9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a" }) do
+	for _, m in ipairs({ "Incorrect API key provided: sk-proj-" .. ("Ab1"):rep(4) .. "****wxyz.", "bad header Bearer abc.def-ghi",
+		"API key not valid: AIza" .. ("Xy9"):rep(12), "Invalid API Key gsk_" .. ("9f8e"):rep(10) }) do
 		_, err = Tutor.openai_response_text({ error = { message = m } }, 401)
-		T.ok(not err:find("AbCdEf12", 1, true) and not err:find("abc.def", 1, true) and not err:find("AIzaSy", 1, true)
-			and not err:find("gsk_9f8e", 1, true), err)
+		T.ok(not err:find("Ab1Ab1", 1, true) and not err:find("abc.def", 1, true) and not err:find("Xy9Xy9", 1, true)
+			and not err:find("9f8e9f8e", 1, true), err)
 	end
 	-- The configured key itself, even a short one that looks like nothing in particular, through openai_fetch.
 	local cfg = Tutor.config(settings({ ["crystalminer.tutor_provider"] = "openai_compatible", ["crystalminer.tutor_model"] = "m",
@@ -672,6 +673,38 @@ T.run("provider error details never show an API key", function()
 	-- An ordinary message is left as it is.
 	_, err = Tutor.openai_response_text({ error = { message = "model \"llama3.2\" not found" } }, 404)
 	T.ok(err:find("llama3.2", 1, true), err)
+end)
+
+T.run("chat: a server with too small a context gets the question again the /ask way", function()
+	local cfg = Tutor.config(settings(OC), no_env)
+	local history = { { role = "user", text = "What is a mirror?" }, { role = "assistant", text = "A reflection." } }
+	local reqs, got, gerr = {}, nil, nil
+	local replies = {
+		{ succeeded = true, code = 400, data = '{"error":{"message":"This model\'s maximum context length is 4096 tokens. However, you requested 6167 tokens"}}' },
+		{ succeeded = true, code = 200, data = '{"choices":[{"message":{"content":"A mirror reflects."},"finish_reason":"stop"}]}' },
+	}
+	local http = { fetch = function(r, cb) reqs[#reqs + 1] = r; cb(replies[#reqs]) end }
+	Tutor.send_chat(http, cfg, history, "And inversion?", 2, "the museum", function(b) return ser(b) end, json_decode,
+		function(t, e) got, gerr = t, e end)
+	T.eq(#reqs, 2); T.eq(got, "A mirror reflects."); T.eq(gerr, nil)
+	T.ok(reqs[1].data:find(Tutor.chat_system_prompt():sub(1, 200), 1, true), "first: the chat prompt")
+	T.ok(reqs[1].data:find("What is a mirror?", 1, true), "first: with the history")
+	T.ok(not reqs[2].data:find("What is a mirror?", 1, true), "second: without the history")
+	T.ok(reqs[2].data:find("max_tokens=400", 1, true), reqs[2].data:sub(1, 80))
+	-- Any other error is passed on, once.
+	reqs, replies = {}, { { succeeded = true, code = 401, data = '{"error":{"message":"no"}}' } }
+	Tutor.send_chat(http, cfg, history, "Q", 2, nil, function(b) return ser(b) end, json_decode, function(t, e) got, gerr = t, e end)
+	T.eq(#reqs, 1); T.eq(got, nil); T.ok(gerr:find("API key"), gerr)
+	-- Claude gets the chat request through T.send, unchanged.
+	local ccfg = Tutor.config(settings({ ["crystalminer.tutor_model"] = "anthropic/claude-opus-5-5", ["crystalminer.anthropic_api_key"] = "k" }), no_env)
+	reqs = {}
+	Tutor.send_chat(http, ccfg, history, "Q", 2, nil, function(b) return ser(b) end, json_decode, function() end)
+	T.eq(#reqs, 1); T.eq(reqs[1].url, Tutor.URL)
+end)
+
+T.run("an error with detail reads as one sentence", function()
+	local _, err = Tutor.openai_response_text({ error = { message = "boom" } }, 500)
+	T.eq(err, "The tutor is unavailable (error 500): boom")
 end)
 
 T.finish()
