@@ -361,11 +361,13 @@ def plan_picture(path):
     for name, x, z in PLAN["rooms"]:
         c = p(x, z)
         d.multiline_text((c[0], c[1]), name, font=f, fill=INK, anchor="mm", align="center")
-    you = p(40, -42)
+    # The plan hangs in the foyer, on the south wall just east of the entrance (furniture.lua).
+    you = p(7, -47)
     d.ellipse((you[0] - 6, you[1] - 6, you[0] + 6, you[1] + 6), fill=(200, 40, 40))
-    d.text((you[0] + 10, you[1] - 2), "you are here", font=font(12), fill=(200, 40, 40))
     door = p(-0.5, z0)
-    d.text((door[0] - 30, door[1] + 4), "entrance", font=font(12), fill=INK)
+    # Both labels sit below the south wall, side by side: "entrance" ends under the door, "you are here" starts under the dot.
+    d.text((door[0] + 4, door[1] + 5), "entrance", font=font(12), fill=INK, anchor="rt")
+    d.text((you[0] - 4, door[1] + 5), "you are here", font=font(12, True), fill=(200, 40, 40), anchor="lt")
     d.text((16, 10), "Plan of the museum", font=font(18, True), fill=INK)
     d.text((W - 60, 10), "N \u2191", font=font(16, True), fill=INK)
     img.save(path, optimize=True)

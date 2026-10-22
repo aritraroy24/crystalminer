@@ -14,7 +14,7 @@ local http = core.request_http_api and core.request_http_api()
 
 local storage = core.get_mod_storage()
 -- Raise this when the built world changes; existing worlds are then rebuilt on start.
-local WORLD_VERSION = "15"
+local WORLD_VERSION = "21"
 local GROUND_Y = 0
 local SPAWN = content.lobby.spawn
 local LABEL_RANGE = 30
@@ -1001,6 +1001,7 @@ local function board_formspec(name)
 		y = y + 0.6
 	end
 	fs[#fs + 1] = "label[0.4," .. (y + 0.4) .. ";Blocks are free: you never run out.]"
+	fs[#fs + 1] = "button[8.4," .. (y + 0.1) .. ";3.2,0.6;ask_tutor;Ask Prism, the tutor]"
 	fs[#fs + 1] = "list[current_player;main;0.4," .. (y + 0.8) .. ";8,4;]"
 	return table.concat(fs)
 end
@@ -1216,6 +1217,10 @@ local function teleport(name, id) end -- defined below; used by the board button
 core.register_on_player_receive_fields(function(player, formname, fields)
 	local name = player:get_player_name()
 	if formname == "" then
+		if fields.ask_tutor then
+			cm.open_tutor(name)
+			return true
+		end
 		for k in pairs(fields) do
 			local id = k:match("^go_(.+)$")
 			if id then
@@ -1307,7 +1312,7 @@ cmd("guide", {
 			{ "/goto <region>", "teleport to a region" },
 			{ "/progress", "see your tier" },
 			{ "/elements <all|axes|mirrors|centres|cells|none>", "choose which symmetry elements to show" },
-			{ "/ask <question>", "ask the tutor about symmetry" },
+			{ "/ask", "chat with Prism, the AI tutor (also at the information desk)" },
 			{ "/whatsymmetry", "work out the exact symmetry of what you built in a region" },
 			{ "/symmetry <description>", "give the Free Lab a symmetry (tier 4)" },
 			{ "/challenge", "get a build challenge for the Free Lab (tier 4)" },
@@ -1648,8 +1653,11 @@ crystalminer.apply_symmetry = apply_symmetry
 -- Provider, URL, model and key settings are read in tutor.lua (Tutor.config). Keys are never logged.
 local tutor_cfg, tutor_off = Tutor.config(function(k) return core.settings:get(k) end, os.getenv)
 local tutor_on = http ~= nil and tutor_off == nil
-local tutor_limits = Tutor.new_limiter()
+-- Claude is paid per request, so it keeps the longer wait between questions; a conversation with a cheap hosted or a local model can go faster.
+local tutor_limits = Tutor.new_limiter(tutor_cfg and tutor_cfg.provider == "openai_compatible" and 5 or nil)
 local function now_s() return core.get_us_time() / 1e6 end
+-- For the chat window (tutor_window.lua).
+cm.tutor = { T = Tutor, http = http, cfg = tutor_cfg, on = tutor_on, limits = tutor_limits, now = now_s }
 
 if tutor_cfg then core.log("action", "[crystalminer] Tutor: " .. Tutor.describe(tutor_cfg)) end
 if not tutor_on then
@@ -1712,12 +1720,13 @@ cmd("symmetry", {
 	end,
 })
 
+-- /ask opens the chat with Prism (tutor_window.lua); /ask <question> asks it straight away there.
 cmd("ask", {
-	params = "<question>",
-	description = "Ask the tutor about symmetry",
+	params = "[question]",
+	description = "Chat with Prism, the AI tutor",
 	func = function(name, param)
-		if param:trim() == "" then return false, "Usage: /ask <your question>" end
-		return ask_tutor(name, param, "You asked: " .. param)
+		cm.open_tutor(name, param:trim())
+		return true
 	end,
 })
 
@@ -1774,6 +1783,8 @@ dofile(modpath .. "/exhibits.lua")
 dofile(modpath .. "/exhibit_dynamic.lua")
 dofile(modpath .. "/tour.lua")
 dofile(modpath .. "/furniture.lua")
+dofile(modpath .. "/tutor_window.lua") -- after furniture.lua: Prism sits on its information desk
+dofile(modpath .. "/billboard.lua")
 
 ---------------------------------------------------------------------------- self-test (used by tests/run_server_test.sh)
 
