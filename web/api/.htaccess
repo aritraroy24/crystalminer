@@ -1,0 +1,16 @@
+# Only chat.php may be reached from the web: not the grounding text, the rate-limit files in cache/, or a config or .env file left here by mistake.
+<IfModule mod_authz_core.c>
+  Require all denied
+  <Files "chat.php">
+    Require all granted
+  </Files>
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+  <Files "chat.php">
+    Order deny,allow
+    Allow from all
+  </Files>
+</IfModule>
+Options -Indexes

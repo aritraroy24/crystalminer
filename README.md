@@ -34,6 +34,7 @@ identifying a hidden point group. Prism, an AI tutor at the museum's information
 - [How to play](#how-to-play)
 - [For teachers](#for-teachers)
 - [The AI tutor](#the-ai-tutor)
+- [The web version](#the-web-version)
 - [Development](#development)
 - [Credits and acknowledgements](#credits-and-acknowledgements)
 - [Licence](#licence)
@@ -338,6 +339,12 @@ tutor.
 on Luanti 5.17 against DeepSeek's API (`deepseek-flash`): a question and a follow-up that built on
 it, each answered in a few seconds. The other providers' settings (addresses, key variables, model names) are unit-tested but have not been run against their live APIs; neither has the Claude path.
 
+## The web version
+
+[web/](web/) is crystalminer in the browser, with nothing to install: the Portal Hall with the Symmetry Gate, all 23 worlds, tiers and quizzes, guides, the Free Lab and its challenges, and Prism's chat and billboard, in first person with three.js. It runs on ordinary shared web hosting: the pages are static files, and a small PHP script (`web/api/chat.php`) holds the API key and Prism's grounding text, so neither reaches the browser. The model is chosen as in the game (`provider/model`, DeepSeek by default).
+
+The web version does not reimplement the science: `luajit tools/export_web.lua` runs the game's engine and writes every world's operations, markers, lessons and texts into `web/data/crystalminer.json`, and `tests/test_web.mjs` checks that the browser copies blocks and detects symmetry exactly as the Lua engine does. How to put it on Hostinger, and what it does not have yet (the galleries, the Try-it Pad, the tour), is in [web/README.md](web/README.md).
+
 ## Development
 
 ### Requirements
@@ -374,6 +381,7 @@ This runs the unit tests (it skips them if no Lua is installed), then starts a r
 | `test_next_hint.lua` | The "Next:" line |
 | `test_billboard.lua` | The billboard's lines, typing, overflow and texture size; every glyph exists |
 | `test_lessons.lua` | Review questions for `/quiz`: none above the player's tier, cycling |
+| `test_web.mjs` | The web version against the Lua engine: every world's copies, detection, lessons, data up to date |
 | `test_tutor.lua` | Tutor request building and response handling, the DeepSeek preset, chat history |
 
 The self-test (`mods/crystalminer/selftest.lua`) places and digs blocks through the registered
@@ -419,6 +427,7 @@ mods/crystalminer/
   sounds/                     Ogg sound effects
   optional_sounds/            the jump sound, sent to players only when sounds are on
   textures/                   generated textures, glyphs and figures
+web/                          the web version (three.js, and PHP for Prism's chat; see web/README.md)
 tests/                        unit tests and test runners
 docs/TEACHERS.md              a guide for teachers
 docs/images/                  screenshots for this README
