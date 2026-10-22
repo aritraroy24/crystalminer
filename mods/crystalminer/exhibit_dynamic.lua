@@ -7,7 +7,9 @@ local pipeline = loadfile(modpath .. "/exhibit_live.lua")(elements)
 local decor = dofile(modpath .. "/decor.lua")
 local baked = dofile(modpath .. "/exhibit_data.lua")
 local rooms = cm.exhibit_rooms
+local notice = cm.exhibit_notice
 cm.exhibit_live_pipeline = pipeline
+cm.exhibit_changed = cm.exhibit_changed or {}
 
 local function room_for_id(id)
 	for _, room in ipairs(rooms) do if room.id == id then return room end end
@@ -249,6 +251,11 @@ local function failure_message(stats)
 end
 
 local in_flight, last_entry = 0, {}
+local function update_notice(entry, stage, detail)
+	entry.notice_stage, entry.notice_detail = stage, detail
+	for _, waiter in ipairs(entry.waiters or {}) do notice.update(waiter.name, stage, detail) end
+end
+
 local function teleport_player(name, player, room)
 	if not player or not player.get_pos then player = core.get_player_by_name(name) end
 	if not player then return end
@@ -261,6 +268,7 @@ local function finish_load(entry, record, reason)
 	if record then
 		entry.record, entry.fingerprint = record, pipeline.fingerprint(record)
 		entry.room_data = build_ready(entry, record)
+		for _, callback in ipairs(cm.exhibit_changed) do callback(entry.slot, record) end
 	end
 	save_records()
 	if not record and not entry.record then entry.room_data = empty_data(entry) end
@@ -270,6 +278,10 @@ local function finish_load(entry, record, reason)
 			local why = network and "Could not load a new structure" or reason
 			if record then say(waiter.name, why .. "; showing " .. display_name(record) .. ".")
 			else say(waiter.name, why .. "; keeping the current structure.") end
+			notice.finish(waiter.name, false, nil, entry.slot,
+				record and (why .. "; showing " .. display_name(record)) or (why .. "; keeping the current structure"))
+		else
+			notice.finish(waiter.name, true, display_name(record), entry.slot)
 		end
 		if entry.record then teleport_player(waiter.name, waiter.player, entry.room_data.room) end
 	end
@@ -321,6 +333,7 @@ local function request_structure(entry)
 		for _, element in ipairs(names) do if not stats.tried_elements[element] then choices[#choices + 1] = element end end
 		if #choices == 0 then failed(); return end
 		local element = choices[math.random(#choices)]; stats.tried_elements[element] = true; stats.lists = stats.lists + 1
+		update_notice(entry, "searching", "Searching list " .. stats.lists .. " of up to 30")
 		fetch_json(api_base() .. "/structures/?name__icontains=" .. element .. "&_limit=100&_fields=id,name", key, function(list, err)
 			if not list then reject(err); if network_down(err) then return end next_list(); return end
 			stats.network_errors = 0
@@ -334,6 +347,7 @@ local function request_structure(entry)
 				if index > math.min(3, #candidates) then next_list(); return end
 				if stats.details >= 60 or os.time() - stats.started >= 60 then failed(); return end
 				local candidate = candidates[index]; stats.details = stats.details + 1
+				update_notice(entry, "checking", "Checking record " .. stats.details .. " of up to 60")
 				fetch_json(api_base() .. "/structures/" .. candidate.id .. "/?_fields=id,name,md5,lattice,sites", key, function(raw, detail_err)
 					if not raw then reject(detail_err); if network_down(detail_err) then return end next_detail(index + 1); return end
 					stats.network_errors = 0
@@ -344,6 +358,7 @@ local function request_structure(entry)
 					for _, old in ipairs(baked) do if old.md5 == raw.md5 then duplicate = true end end
 					if duplicate then reject("duplicate"); next_detail(index + 1); return end
 					if pipeline.similar(raw, fingerprints_for(entry)) then reject("similar"); next_detail(index + 1); return end
+					update_notice(entry, "building", "Building the exhibit room...")
 					finish_load(entry, prepared); return
 				end)
 			end
@@ -357,10 +372,14 @@ local function start_load(entry, player_name, player)
 	entry.state, entry.last_player = "loading", player_name
 	entry.waiters = entry.waiters or {}; entry.waiters[#entry.waiters + 1] = { name = player_name, player = player }
 	if #entry.waiters == 1 then
+		notice.begin(player_name, entry.slot)
 		in_flight = in_flight + 1
 		entry.previous_fingerprint = entry.record and (entry.fingerprint or pipeline.fingerprint(entry.record)) or entry.previous_fingerprint
 		request_structure(entry)
-	else say(player_name, "This exhibit is already loading; you will enter when it is ready.") end
+	else
+		notice.join(player_name, entry.slot, { stage = entry.notice_stage or "searching", detail = entry.notice_detail })
+		say(player_name, "This exhibit is already loading; you will enter when it is ready.")
+	end
 	save_records()
 end
 
@@ -379,6 +398,7 @@ local function enter(name, id, player)
 	if entry.state == "loading" then
 		if in_flight >= 2 and not entry.waiters then say(name, "Please try again in a moment."); return true end
 		entry.waiters = entry.waiters or {}; entry.waiters[#entry.waiters + 1] = { name = name, player = player }
+		notice.join(name, entry.slot, { stage = entry.notice_stage or "searching", detail = entry.notice_detail })
 		say(name, "This exhibit is loading; you will enter when it is ready."); return true
 	end
 	if in_flight >= 2 then say(name, "Please try again in a moment."); return true end
