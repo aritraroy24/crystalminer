@@ -133,6 +133,19 @@ fixtures. Run `sh tools/make_exhibit_assets.sh` (Python 3, standard library only
 its inputs (`data/mpcontribs/*.json`, `mods/crystalminer/exhibit_elements.lua` or the generator
 scripts), and commit the regenerated files.
 
+### Hologram gallery
+
+Gallery 2 has one small static hologram pedestal for each live crystal exhibit. It shows the saved
+room structure as coloured atoms, white bonds, and orange unit-cell dots, with dense overlapping
+dust clouds; nothing rotates or drifts, and visitors can walk around the fixed display, which floats about
+1.5 blocks above its pedestal.
+They are shown throughout Gallery 2 and its doorways; distant displays use lighter detail to keep
+the total particle load reasonable.
+They use the saved exhibit records only and make no web requests.
+
+When a random structure is being loaded after entering an exhibit, a centred on-screen notice
+shows the search stage and elapsed time until the room is ready or a fallback is displayed.
+
 ### The museum
 
 Players start in the foyer of the **Museum of Crystals and Symmetry**, a building with a glass
