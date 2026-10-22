@@ -98,3 +98,5 @@ T.run("rooms are outside the conservative world bounds", function()
 		end
 	end
 end)
+
+T.finish()
