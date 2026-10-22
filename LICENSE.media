@@ -16,8 +16,9 @@ give appropriate credit, link to the licence, indicate if changes were made, and
 your contributions under the same licence.
 
 Exception: the lettering on signs.
-The glyph images crystalminer_{b52,c44,b34,b26,b17,r24,r20,r18,r16}_*
-(and the lettering in the generated figures) are rendered from the DejaVu fonts, which are
+The glyph images crystalminer_{b52,c44,b34,b26,b17,r24,r20,r18,r16}_* and the billboard's pixel
+glyphs crystalminer_px_* (and the lettering in the generated figures) are rendered from the DejaVu
+fonts, which are
 derived from Bitstream Vera. See LICENSE.fonts for their licence, which must be kept with them.
 
 The generated exhibit atom textures (crystalminer_atom_*.png) use the Jmol element-colour
