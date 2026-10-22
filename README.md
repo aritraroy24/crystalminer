@@ -302,16 +302,25 @@ informed consent; the notice in the game is not a substitute.
 **Setup** (Luanti **Settings**, show advanced settings):
 
 1. Set **Mods → HTTP mods** (`secure.http_mods`) to `crystalminer`.
-2. Under **Content: Games → crystalminer**, choose **Tutor: provider**:
-   - `deepseek`: DeepSeek's hosted API, model `deepseek-flash` (another with **Tutor: model name**, such as `deepseek-v4-pro`). The key is the environment variable `DEEPSEEK_API_KEY` or **Tutor: API key for OpenAI-compatible services**. Answers take a few seconds and cost a fraction of a cent.
-   - `anthropic` (default): set **Tutor: Anthropic API key**, or the environment variable
-     `ANTHROPIC_API_KEY`. The Claude API is charged per request.
-   - `openai_compatible`: set **Tutor: model name** and, if needed, **Tutor: base URL** (default
-     `http://localhost:11434/v1`, for [Ollama](https://ollama.com)) and **Tutor: API key for
-     OpenAI-compatible services**. For a free local model, install Ollama, run
-     `ollama pull llama3.2`, and set the model name to `llama3.2`.
+2. Give the model's provider its API key, in the environment variable LiteLLM uses for it (see below) or in **Tutor: API key**. The default model is DeepSeek's, so `DEEPSEEK_API_KEY` is all it needs.
+3. To use another model, set **Tutor: model** under **Content: Games → crystalminer**, or the environment variable `CRYSTALMINER_TUTOR_MODEL`.
 
-**Keeping the key in a `.env` file** (Windows): put `DEEPSEEK_API_KEY=...` in a file named `.env` in the game folder or the folder above it, and start Luanti with `tools/luanti_with_env.cmd`. It passes the file's variables to Luanti only, so the key is not written into Luanti's settings. The repository ignores `.env` files. On macOS or Linux, `export DEEPSEEK_API_KEY=...` before starting Luanti does the same.
+**Choosing the model.** Models are named as in [LiteLLM](https://docs.litellm.ai/docs/providers), `provider/model`, and each provider's key is read from the variable LiteLLM reads:
+
+| Model | Provider | Key |
+|---|---|---|
+| `deepseek/deepseek-flash` (default), `deepseek/deepseek-v4-pro` | DeepSeek | `DEEPSEEK_API_KEY` |
+| `anthropic/claude-opus-5-5` | Claude (Messages API) | `ANTHROPIC_API_KEY` or **Tutor: Anthropic API key** |
+| `openai/<model>` | OpenAI | `OPENAI_API_KEY` |
+| `gemini/<model>` | Google Gemini | `GEMINI_API_KEY` |
+| `groq/`, `mistral/`, `xai/`, `cerebras/`, `perplexity/` `<model>` | Groq, Mistral, xAI, Cerebras, Perplexity | `GROQ_API_KEY`, `MISTRAL_API_KEY`, `XAI_API_KEY`, `CEREBRAS_API_KEY`, `PERPLEXITYAI_API_KEY` |
+| `openrouter/<org>/<model>`, `together_ai/<org>/<model>`, `fireworks_ai/<model>` | OpenRouter, Together AI, Fireworks AI | `OPENROUTER_API_KEY`, `TOGETHERAI_API_KEY`, `FIREWORKS_AI_API_KEY` |
+| `ollama/llama3.2`, `lm_studio/<model>`, `hosted_vllm/<model>` | A server on this computer or network | none; the address from `OLLAMA_API_BASE`, `LM_STUDIO_API_BASE`, `HOSTED_VLLM_API_BASE` or **Tutor: base URL** |
+| `litellm_proxy/<model>` | Any model a [LiteLLM proxy](https://docs.litellm.ai/docs/simple_proxy) serves: Bedrock, Vertex AI, Azure and the rest | `LITELLM_PROXY_API_KEY`, at `LITELLM_PROXY_API_BASE` (default `http://localhost:4000`) |
+
+Luanti runs only Lua, so the game cannot use LiteLLM itself: it talks to Claude through the Messages API and to every other provider through its OpenAI-compatible Chat Completions API, and reaches anything else through a LiteLLM proxy. **Tutor: provider** `openai_compatible` with **Tutor: base URL** still connects to any other OpenAI-style server, sending the model's name exactly as written. For a free local model, install [Ollama](https://ollama.com), run `ollama pull llama3.2`, and set the model to `ollama/llama3.2`.
+
+**Keeping keys in a `.env` file** (Windows): copy [.env.example](.env.example) to a file named `.env` in the game folder or the folder above it, fill in the key for your provider (and `CRYSTALMINER_TUTOR_MODEL` to change the model), and start Luanti with `tools/luanti_with_env.cmd`. It passes the file's variables to Luanti only, so no key is written into Luanti's settings. The repository ignores `.env` files. On macOS or Linux, `export DEEPSEEK_API_KEY=...` (and so on) before starting Luanti does the same.
 
 A player can ask a question every 20 seconds with Claude (it is paid per request) and every 5 with the other providers; at most three questions wait for an answer at once across the server.
 
@@ -327,8 +336,7 @@ tutor.
 **Tested.** The open-model path was run on a Luanti server with Qwen2.5-1.5B-Instruct
 (llama.cpp): both commands worked, with replies in 10–60 s on two CPU cores. Prism's chat was run
 on Luanti 5.17 against DeepSeek's API (`deepseek-flash`): a question and a follow-up that built on
-it, each answered in a few seconds. The Claude path is unit-tested but has not yet been run against
-the live API.
+it, each answered in a few seconds. The other providers' settings (addresses, key variables, model names) are unit-tested but have not been run against their live APIs; neither has the Claude path.
 
 ## Development
 

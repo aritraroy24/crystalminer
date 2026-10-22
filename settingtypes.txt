@@ -1,28 +1,23 @@
-# Which AI service runs the in-game tutor (/ask and /symmetry with a description).
-# anthropic: the Claude API, paid per request (needs the Anthropic API key below).
-# deepseek: DeepSeek's hosted API (model deepseek-flash unless the model name below is set). The key is the environment variable DEEPSEEK_API_KEY, or the API key for OpenAI-compatible services below.
-# openai_compatible: any server with an OpenAI-style Chat Completions API, for example Ollama
-# running a free open-source model on this computer (set the base URL and model name below).
-# Either way the server must also list crystalminer in secure.http_mods.
-crystalminer.tutor_provider (Tutor: provider) enum anthropic anthropic,deepseek,openai_compatible
+# The model behind the AI tutor (Prism's chat, /ask and /symmetry with a description), named as in LiteLLM: provider/model.
+# deepseek/deepseek-flash (the default) or deepseek/deepseek-v4-pro: DeepSeek, key in DEEPSEEK_API_KEY.
+# anthropic/claude-opus-5-5: Claude, key in ANTHROPIC_API_KEY or the Anthropic API key below.
+# openai/..., gemini/..., groq/..., mistral/..., openrouter/<org>/<model>, together_ai/..., xai/..., fireworks_ai/..., perplexity/..., cerebras/...: hosted services, each with the key variable LiteLLM uses (OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY, MISTRAL_API_KEY, OPENROUTER_API_KEY, TOGETHERAI_API_KEY, XAI_API_KEY, FIREWORKS_AI_API_KEY, PERPLEXITYAI_API_KEY, CEREBRAS_API_KEY).
+# ollama/llama3.2, lm_studio/..., hosted_vllm/...: a server on this computer or your network, no key needed.
+# litellm_proxy/<model>: any model a LiteLLM proxy serves (Bedrock, Vertex AI, Azure and the rest), at LITELLM_PROXY_API_BASE (default http://localhost:4000) with LITELLM_PROXY_API_KEY.
+# Empty: the environment variable CRYSTALMINER_TUTOR_MODEL, else deepseek/deepseek-flash. The server must also list crystalminer in secure.http_mods.
+crystalminer.tutor_model (Tutor: model, as provider/model) string deepseek/deepseek-flash
 
-# Anthropic API key for the tutor, used when the provider is anthropic.
-# Paid per request through the Claude API.
-# The server must also list crystalminer in secure.http_mods.
+# Usually auto: the provider is the prefix of the model above. A provider's name (deepseek, anthropic, ...) lets the model above be given without its prefix. openai_compatible: any server with an OpenAI-style Chat Completions API at the base URL below, with the model's name sent exactly as written.
+crystalminer.tutor_provider (Tutor: provider) enum auto auto,openai_compatible,deepseek,anthropic,openai,gemini,groq,mistral,openrouter,together_ai,xai,fireworks_ai,perplexity,cerebras,ollama,lm_studio,hosted_vllm,litellm_proxy
+
+# Anthropic API key, for anthropic/... models. Paid per request through the Claude API. ANTHROPIC_API_KEY is used when this is empty.
 crystalminer.anthropic_api_key (Tutor: Anthropic API key) string
 
-# OpenAI-compatible provider: address of the API, up to and including /v1.
-# Ollama on this computer: http://localhost:11434/v1
+# Address of the API, up to and including /v1, when it is not the provider's usual one: for openai_compatible, hosted_vllm, a proxy, or a server elsewhere. Ollama on this computer: http://localhost:11434/v1
 crystalminer.tutor_base_url (Tutor: base URL) string http://localhost:11434/v1
 
-# OpenAI-compatible provider: name of the model, exactly as the server knows it,
-# for example llama3.2 after "ollama pull llama3.2". The tutor stays off until this is set.
-crystalminer.tutor_model (Tutor: model name) string
-
-# OpenAI-compatible provider: API key, sent as "Authorization: Bearer <key>". Leave empty for a
-# local server such as Ollama; hosted services need one. The environment variable
-# CRYSTALMINER_TUTOR_API_KEY is used when this is empty.
-crystalminer.tutor_api_key (Tutor: API key for OpenAI-compatible services) string
+# API key for the model's provider, sent as "Authorization: Bearer <key>". When empty, the provider's own variable (DEEPSEEK_API_KEY, OPENAI_API_KEY, ...) and then CRYSTALMINER_TUTOR_API_KEY are used. Leave it empty for a local server such as Ollama.
+crystalminer.tutor_api_key (Tutor: API key) string
 
 # OpenAI-compatible provider: seconds to wait for an answer. Local models on a slow CPU may need more.
 crystalminer.tutor_timeout (Tutor: timeout in seconds) int 60 5 600
