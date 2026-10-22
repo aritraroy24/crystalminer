@@ -116,7 +116,9 @@ is entered; `/exhibit list` shows the current structure in each room for teacher
 `crystalminer` to `secure.http_mods` in `minetest.conf` (without it the game may not make web
 requests, and each room shows one of three saved samples). The Materials Project key is read from
 the `crystalminer.mp_api_key` setting, then the `CRYSTALMINER_MP_API_KEY` environment variable,
-then `MP_API` (or `MP_API_KEY`) in the git-ignored `.env` file in the game folder.
+then `MP_API` (or `MP_API_KEY`) in the git-ignored `.env` file in the game folder. Luanti's mod
+security (on by default) does not let the game read that `.env` file, so on a normal server use the
+setting or the environment variable.
 The key is never shown or stored in exhibit records. Candidates with the same reduced chemical
 formula or the same anonymous reduced stoichiometry (for example, any other ABO3 structure) as an
 existing exhibit are rejected. The game chooses a random element symbol, asks for a filtered

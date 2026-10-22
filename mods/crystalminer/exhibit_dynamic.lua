@@ -166,8 +166,10 @@ local function fingerprints_for(entry)
 end
 cm.exhibit_fingerprints_for = fingerprints_for
 
--- The key may sit in the game folder's .env file (git-ignored), as MP_API or MP_API_KEY. A mod may
--- read files in the game folder; the file is read once and its contents are never logged.
+-- The key may sit in the game folder's .env file (git-ignored), as MP_API or MP_API_KEY. Mod security
+-- (on by default) does not let a mod read the game folder, so this works only with
+-- secure.enable_security = false; otherwise io.open fails inside the pcall and the setting or the
+-- environment variable is needed. The file is read once and its contents are never logged.
 local env_key
 do
 	local ok, file = pcall(io.open, core.get_modpath("crystalminer") .. "/../../.env", "r")
@@ -297,7 +299,7 @@ local function request_structure(entry)
 		finish_load(entry, fallback(entry), "Live structures are off: add crystalminer to secure.http_mods in minetest.conf and restart"); return
 	end
 	if not key then
-		finish_load(entry, fallback(entry), "Live structures are off: no Materials Project key (set MP_API in the game folder's .env file)"); return
+		finish_load(entry, fallback(entry), "Live structures are off: no Materials Project key (set crystalminer.mp_api_key in minetest.conf)"); return
 	end
 	local stats = { lists = 0, details = 0, tried_ids = {}, tried_elements = {}, rejections = {}, started = os.time(),
 		network_errors = 0 }
