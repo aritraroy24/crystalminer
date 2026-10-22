@@ -122,7 +122,8 @@ formula or the same anonymous reduced stoichiometry (for example, any other ABO3
 existing exhibit are rejected. The game chooses a random element symbol, asks for a filtered
 structure-name list, then requests only the selected structure ids; no student data is sent.
 Each room load permits at most 30 filtered-list requests and 60 structure requests, with a
-20-second request timeout and a 60-second overall budget; at most two room loads run at once.
+20-second request timeout, and no new request starts after 60 seconds; at most two room loads run
+at once. If the web request fails or nothing suitable is found, the room shows a saved sample.
 
 Some exhibit files are generated, but they are committed, so a fresh clone works as it is: the
 baked sample structures, the element colour table, 96 atom textures, the atom mesh and the unit-test
@@ -164,12 +165,18 @@ roof, doors and signs, meant to be toured and read like a real science museum.
   salt, caesium chloride, strontium titanate (perovskite) and diamond), each with a panel, a
   picture of one unit cell and a gold clue crystal that asks a question about it (`/hunt`).
 - **Portal Hall**: one portal per world, ordered by tier, each framed with a plaque giving the
-  world's name, symmetry and idea. Punching a portal takes you there.
+  world's name, symmetry and idea. Punching a portal takes you there. Six more portals, three on the
+  west wall and three on the east wall, lead to the [live crystal exhibits](#live-crystal-exhibits).
 
 Each history panel has a diagram of its idea (simplified ones are labelled "schematic"). There are
 no portraits: the game only draws what can be drawn from the science. The rooms have carpets,
 benches, plants, an information desk, mineral sculptures (fluorite, pyrite, halite) and two
 symmetry puzzles in Gallery 1.
+
+Museum NPCs: a blue information-desk character in Visitor information answers common questions and
+can pass a typed question to the tutor (when the tutor is set up; the same limits as `/ask` apply),
+and eight orange visitors stroll around the foyer, the Workshop and the galleries and give a tip
+when right-clicked.
 
 ### The worlds
 
@@ -440,6 +447,11 @@ them under **Settings → Content: Games → crystalminer**: the tutor settings,
 - International Tables for Crystallography, Vol. A, for point-group orders, plane-group
   multiplicities and symbols.
 - [DejaVu fonts](https://dejavu-fonts.github.io/) for the lettering on signs and in figures.
+- The [Materials Project](https://materialsproject.org) and its MPContribs platform for the crystal
+  structures in the live exhibits (CC BY 4.0; see [LICENSE.media](LICENSE.media)), and the Jmol
+  element colours (values from ASE's `jmol_colors`).
+- Contributors: [@lvtamayo](https://github.com/lvtamayo) for the live
+  crystal exhibits, and Davis Magpantay ([@Dexva](https://github.com/Dexva)) for the museum NPCs.
 - [Anthropic](https://www.anthropic.com)'s Claude models. Much of the code, texts, figures and
   tests were written with Claude Opus 5.5 and Claude Sonnet 5.5 through Claude Code, under the
   author's direction and review. The in-game tutor calls Claude Opus 5.5 through the Claude API.
@@ -449,5 +461,7 @@ them under **Settings → Content: Games → crystalminer**: the tutor settings,
 - Code: GNU LGPL 2.1 or later ([LICENSE](LICENSE)).
 - Textures, pictures, sounds, menu images and texts: CC BY-SA 4.0 ([LICENSE.media](LICENSE.media)).
 - Sign lettering is rendered from DejaVu fonts ([LICENSE.fonts](LICENSE.fonts)).
+- Crystal structures for the exhibits (`data/mpcontribs/` and the data generated from it): Materials
+  Project MPContribs data, CC BY 4.0, credited in [LICENSE.media](LICENSE.media).
 
 Copyright (c) 2026 Viejay Ordillo and contributors.
