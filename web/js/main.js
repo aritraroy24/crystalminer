@@ -580,6 +580,8 @@ if (TEST) {
     if (params.get("answer")) setTimeout(() => document.querySelectorAll(".options button")[params.get("answer") === "yes" ? 0 : 1].click(), 500);
   }
 }
+// ?clean=1: no HUD, for pictures of the game (the link preview, web/og.png).
+if (TEST && params.get("clean") === "1") document.body.classList.add("clean");
 // ?fill=1: every exhibit room shows its next built-in structure (Gallery 2's holograms all filled); ?visit=exhibit_<n>: punch that exhibit's portal.
 if (TEST && params.get("fill") === "1") for (const r of dump.exhibit_rooms) museum.showExhibit(r, museum.fallbackFor(r));
 if (TEST && params.get("visit")) setTimeout(() => visitExhibit(museum.room(params.get("visit"))), 300);

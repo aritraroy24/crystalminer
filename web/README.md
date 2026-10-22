@@ -20,6 +20,7 @@ Nothing is rewritten for the web:
 | `api/common.php` | What both scripts share: settings, keys, limits (not reachable from the web) |
 | `api/prompt.txt` | Prism's grounding text (the game's lesson text), read only by `chat.php` |
 | `api/config.example.php` | A template for the settings of both scripts |
+| `og.jpg` | The link preview picture (1200 x 630), named in `index.html`'s Open Graph tags with the site's address: change those addresses for a copy on another domain |
 | `.htaccess`, `api/.htaccess` | Keep the API folder's files, and any key file, from being served |
 
 ## Putting it on Hostinger (Premium web hosting)

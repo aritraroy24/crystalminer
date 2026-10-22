@@ -137,3 +137,6 @@ td.todo { color: #FFE38A; }
   .suggest { grid-template-columns: 1fr; }
   #tools { max-width: 70vw; }
 }
+
+/* ?test=1&clean=1: the view only, for pictures of the game. */
+.clean #hud, .clean #crosshair, .clean #legend, .clean #hint, .clean #hotbar, .clean #toast, .clean #notice { display: none !important; }
