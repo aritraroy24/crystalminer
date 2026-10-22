@@ -490,7 +490,7 @@ them under **Settings → Content: Games → crystalminer**: the tutor settings,
 - Contributors: Lenard Tamayo [@lvtamayo](https://github.com/lvtamayo) for the live
   crystal exhibits, Davis Magpantay ([@Dexva](https://github.com/Dexva)) for the museum NPCs,
   [@aritraroy24](https://github.com/aritraroy24) for Prism, the AI tutor's chat window and pixel
-  billboard, and the provider/model tutor setting, and Rev Odevilas
+  billboard, and the provider/model tutor setting, and Rev Odevilas [@rbsodevilas](https://github.com/rbsodevilas) 
   and Yuan Placides [@yplacides](https://github.com/yplacides) for presentations and write-ups.
 - [Anthropic](https://www.anthropic.com)'s Claude models. Much of the code, texts, figures and
   tests were written with Claude Opus 5.5 and Claude Sonnet 5.5 through Claude Code, under the
