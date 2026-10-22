@@ -707,4 +707,15 @@ T.run("an error with detail reads as one sentence", function()
 	T.eq(err, "The tutor is unavailable (error 500): boom")
 end)
 
+T.run("a key pasted into the wrong setting is not logged", function()
+	local key = "sk-" .. ("9z8y"):rep(8)
+	local _, why = Tutor.config(settings({ ["crystalminer.tutor_model"] = key }), no_env)
+	T.ok(why and not why:find("9z8y", 1, true), why)
+	local cfg = Tutor.config(settings({ ["crystalminer.tutor_provider"] = "openai_compatible", ["crystalminer.tutor_model"] = key }), no_env)
+	T.ok(not Tutor.describe(cfg):find("9z8y", 1, true), Tutor.describe(cfg))
+	-- Ordinary model names are logged as they are.
+	cfg = Tutor.config(settings({ ["crystalminer.tutor_model"] = "openrouter/meta-llama/llama-4-maverick" }), env({ OPENROUTER_API_KEY = "k" }))
+	T.ok(Tutor.describe(cfg):find("meta-llama/llama-4-maverick", 1, true), Tutor.describe(cfg))
+end)
+
 T.finish()

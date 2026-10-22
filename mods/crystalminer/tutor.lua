@@ -457,13 +457,14 @@ function T.config(get, getenv)
 	elseif spec == "" then
 		provider, model = T.DEFAULT_MODEL:match("^([%w_]+)/(.+)$")
 	else
-		return nil, "crystalminer.tutor_model '" .. spec .. "' needs a provider in front, as in deepseek/deepseek-flash or ollama/llama3.2 (providers: " .. T.provider_names() .. ")"
+		-- The value is logged; a key pasted into the wrong setting must not be.
+		return nil, "crystalminer.tutor_model '" .. T.redact(spec) .. "' needs a provider in front, as in deepseek/deepseek-flash or ollama/llama3.2 (providers: " .. T.provider_names() .. ")"
 	end
 	local p = T.PROVIDERS[provider]
 	-- Before the provider/model setting, the anthropic provider ignored crystalminer.tutor_model (it was the openai_compatible model). A leftover name that is not Claude's must not be sent to the Claude API.
 	if p and p.anthropic and not prefix and not trim(model):lower():match("^claude") then model = "" end
 	if not p then
-		return nil, "unknown crystalminer.tutor_provider '" .. provider .. "' (use openai_compatible or one of: " .. T.provider_names() .. ")"
+		return nil, "unknown crystalminer.tutor_provider '" .. T.redact(provider) .. "' (use openai_compatible or one of: " .. T.provider_names() .. ")"
 	end
 	model = trim(model)
 	if p.anthropic then return anthropic_config(get, getenv, model) end
@@ -473,12 +474,12 @@ end
 --- One line for the server log. Never includes the API key.
 function T.describe(cfg)
 	if cfg.provider == "anthropic" then
-		return "provider anthropic, url " .. cfg.url .. ", model " .. cfg.model
+		return "provider anthropic, url " .. cfg.url .. ", model " .. T.redact(cfg.model)
 	end
 	local url = cfg.base_url:gsub("//[^/@]*@", "//***@")
 	local name = cfg.prefix and cfg.prefix ~= "openai_compatible" and (cfg.prefix .. " (openai_compatible)") or "openai_compatible"
-	return "provider " .. name .. ", base_url " .. url .. ", model "
-		.. (cfg.model ~= "" and cfg.model or "(not set)") .. ", API key " .. (cfg.api_key and "set" or "not set")
+	return "provider " .. name .. ", base_url " .. T.redact(url) .. ", model "
+		.. (cfg.model ~= "" and T.redact(cfg.model) or "(not set)") .. ", API key " .. (cfg.api_key and "set" or "not set")
 end
 
 function T.openai_headers(api_key)
