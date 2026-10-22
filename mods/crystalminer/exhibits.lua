@@ -122,17 +122,34 @@ local LEGACY_BOXES = {
 for _, room in ipairs(ROOMS) do cm.extra_boxes[#cm.extra_boxes + 1] = { min = room.min, size = room.size } end
 for _, box in ipairs(LEGACY_BOXES) do cm.extra_boxes[#cm.extra_boxes + 1] = { min = box.min, size = box.size } end
 
+-- The emerge callback runs once per map block, so count blocks, not boxes. A block comes back
+-- CANCELLED when the emerge queue is full or another thread is generating its chunk; ask for it
+-- again a moment later, as init.lua does for the first build.
+local MAX_TRIES = 150
 local function emerge_all(done)
-	local pending, failed = #LEGACY_BOXES, false
-	local function request(box)
-		local maxp = room_max(box)
-		core.emerge_area({ x = box.min[1], y = box.min[2], z = box.min[3] }, { x = maxp[1], y = maxp[2], z = maxp[3] }, function(_, action)
-			if action == core.EMERGE_CANCELLED or action == core.EMERGE_ERRORED then failed = true end
+	local pending, failed = 0, false
+	for _, box in ipairs(LEGACY_BOXES) do
+		local maxp, n = room_max(box), 1
+		for i = 1, 3 do n = n * (math.floor(maxp[i] / 16) - math.floor(box.min[i] / 16) + 1) end
+		pending = pending + n
+	end
+	local function request(pos1, pos2, tries)
+		core.emerge_area(pos1, pos2, function(blockpos, action)
+			local bad = action == core.EMERGE_CANCELLED or action == core.EMERGE_ERRORED
+			if bad and tries < MAX_TRIES then
+				local p = { x = blockpos.x * 16, y = blockpos.y * 16, z = blockpos.z * 16 }
+				core.after(0.2, function() request(p, p, tries + 1) end)
+				return
+			end
+			if bad then failed = true end
 			pending = pending - 1
 			if pending == 0 then done(not failed) end
 		end)
 	end
-	for _, box in ipairs(LEGACY_BOXES) do request(box) end
+	for _, box in ipairs(LEGACY_BOXES) do
+		local maxp = room_max(box)
+		request({ x = box.min[1], y = box.min[2], z = box.min[3] }, { x = maxp[1], y = maxp[2], z = maxp[3] }, 1)
+	end
 end
 
 local function build_all()
@@ -152,7 +169,8 @@ end)
 cm.when_ready(function()
 	if cm.storage:get_string("exhibit_version") == EXHIBIT_VERSION then mark_ready(); return end
 	emerge_all(function(ok)
-		if ok then build_all(); cm.storage:set_string("exhibit_version", EXHIBIT_VERSION) end
+		if ok then build_all(); cm.storage:set_string("exhibit_version", EXHIBIT_VERSION)
+		else core.log("error", "[crystalminer] exhibit rooms could not be generated; they are built at the next start") end
 		mark_ready()
 	end)
 end)
