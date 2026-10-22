@@ -27,6 +27,19 @@
 <script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }</script>
 </head>
 <body>
+<!-- Shown instead of the game on a small screen or without a mouse (css/style.css, js/start.js). -->
+<div id="unsupported">
+  <div class="card">
+    <img src="textures/tutor_avatar.png" alt="" class="logo">
+    <h1>crystalminer</h1>
+    <p class="lead">Symmetry and crystals, block by block: a 3D museum and 23 symmetry worlds where every block you place is copied by the world's symmetry.</p>
+    <h2>Not playable on this screen</h2>
+    <p>crystalminer is played in first person with a keyboard and a mouse, in a window at least 800 pixels wide and 560 high. Open it on a computer or laptop:</p>
+    <p class="url">crystalminer.online</p>
+    <p class="small">On a computer already? Make the browser window bigger, or zoom out (Ctrl and minus, or Cmd and minus on a Mac): the game starts by itself.</p>
+    <p class="small" id="unsupported-size"></p>
+  </div>
+</div>
 <canvas id="view"></canvas>
 
 <div id="hud">
@@ -91,6 +104,6 @@
 <div id="toast"></div>
 <div id="notice" hidden></div>
 <noscript>crystalminer needs JavaScript and WebGL.</noscript>
-<script type="module" src="js/main.js"></script>
+<script type="module" src="js/start.js"></script>
 </body>
 </html>

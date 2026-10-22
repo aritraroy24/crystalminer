@@ -11,7 +11,7 @@ Nothing is rewritten for the web:
 
 | Path | What it is |
 |---|---|
-| `index.html`, `css/`, `js/` | The game in the browser (three.js is loaded from the jsDelivr CDN) |
+| `index.html`, `css/`, `js/` | The game in the browser (three.js is loaded from the jsDelivr CDN); `js/start.js` checks the screen first, then loads `js/main.js` |
 | `data/museum.json` | The museum as the game builds it, recorded by `tools/export_museum.sh` |
 | `data/crystalminer.json` | Worlds, operations, markers, lessons, clues, exhibit structures and texts, made by `tools/export_web.lua` |
 | `textures/` | Textures for the worlds, guide pictures and Prism's art (`tools/export_web.lua`); `textures/game/` the museum's textures and sign letters under their game names (`tools/export_museum.sh`) |
@@ -77,4 +77,4 @@ W A S D walk, the mouse looks, Space jumps; K flies (Space up, Shift down), J go
 
 ## Not in the web version yet
 
-The visitor tour, step-by-step and by-hand modes, the stereogram, the pre- and post-test and the teacher's class view are only in the Luanti game for now. The symmetry worlds are simplified: their build spaces and markers are the game's, their architecture is not yet. It is made for a computer with a keyboard and mouse; phones and tablets can open it but cannot move around yet.
+The visitor tour, step-by-step and by-hand modes, the stereogram, the pre- and post-test and the teacher's class view are only in the Luanti game for now. The symmetry worlds are simplified: their build spaces and markers are the game's, their architecture is not yet. It is made for a computer with a keyboard and mouse, in a window at least 800 x 560: on a smaller screen, or one with only touch, `js/start.js` shows a message instead and does not load the game (it starts by itself once the window is big enough).

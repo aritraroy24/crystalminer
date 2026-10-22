@@ -91,6 +91,21 @@ td.todo { color: #FFE38A; }
 .card input[type=number] { font: inherit; font-size: 20px; padding: 8px 12px; width: 160px; border-radius: 6px; border: 1px solid #3A4260; background: var(--deep); color: var(--ink); }
 
 #start, #panel, #chat { z-index: 10; }
+
+/* Below 800 x 560, or with no mouse, the game is not playable: a message instead of everything else (js/start.js uses the same query). */
+#unsupported { display: none; }
+@media (max-width: 799px), (max-height: 559px), not all and (any-pointer: fine) {
+  html, body { overflow: auto; height: auto; min-height: 100%; }
+  body > *:not(#unsupported) { display: none !important; }
+  #unsupported { display: grid; place-items: center; min-height: 100vh; padding: 16px; box-sizing: border-box; }
+  #unsupported .card { max-width: 520px; max-height: none; box-sizing: border-box; text-align: center; overflow-wrap: anywhere; }
+  #unsupported .logo { width: 96px; }
+  #unsupported h1 { margin: 4px 0 8px; font-size: 32px; color: var(--accent); }
+  #unsupported h2 { margin: 18px 0 8px; color: #FFD866; font-size: 20px; }
+  #unsupported p { margin: 8px 0; }
+  #unsupported .url { font-size: 20px; font-weight: 700; color: var(--blue); }
+  #unsupported .small { color: var(--muted); font-size: 13.5px; }
+}
 #toast { z-index: 5; position: fixed; left: 50%; top: 70px; transform: translateX(-50%); background: rgba(20, 26, 38, 0.92); padding: 10px 16px; border-radius: 8px; max-width: min(720px, 90vw); opacity: 0; transition: opacity 0.3s; pointer-events: none; border-left: 4px solid var(--accent-2); }
 #toast.show { opacity: 1; }
 #toast.right { border-left-color: var(--right); }
