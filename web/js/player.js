@@ -42,9 +42,10 @@ export class Player {
     const x0 = Math.round(p[0] - HALF + 0.001), x1 = Math.round(p[0] + HALF - 0.001);
     const y0 = Math.round(p[1] + 0.001), y1 = Math.round(p[1] + HEIGHT - 0.001);
     const z0 = Math.round(p[2] - HALF + 0.001), z1 = Math.round(p[2] + HALF - 0.001);
+    const box = [p[0] - HALF, p[1], p[2] - HALF, p[0] + HALF, p[1] + HEIGHT, p[2] + HALF];
     for (let x = x0; x <= x1; x++)
       for (let y = y0; y <= y1; y++)
-        for (let z = z0; z <= z1; z++) if (voxels.solid(x, y, z)) return true;
+        for (let z = z0; z <= z1; z++) if (voxels.collides ? voxels.collides(x, y, z, box) : voxels.solid(x, y, z)) return true;
     return false;
   }
 

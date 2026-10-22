@@ -95,6 +95,10 @@ td.todo { color: #FFE38A; }
 #toast.show { opacity: 1; }
 #toast.right { border-left-color: var(--right); }
 #toast.warn { border-left-color: var(--warn); }
+/* As the game's HUD notice: centred, a yellow title over a white status line. */
+#notice { z-index: 5; position: fixed; left: 50%; top: 20%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.85); max-width: 90vw; }
+#notice .title { color: #FFE680; font-size: 26px; font-weight: 700; }
+#notice .status { color: #FFFFFF; font-size: 19px; margin-top: 6px; }
 
 /* Prism's chat */
 #chat { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(8, 11, 18, 0.45); padding: 16px; }

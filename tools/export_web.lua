@@ -165,6 +165,62 @@ end
 
 ---------------------------------------------------------------------------- write
 
+---------------------------------------------------------------------------- the museum's exhibits
+
+-- Gallery 3's clue crystals (museum.lua): the question each one asks, by exhibit id.
+local clues = {}
+for _, e in ipairs(content.museum.exhibits) do
+	if e.clue then clues[e.id] = { name = e.name, q = e.clue.q, options = e.clue.options, answer = e.clue.answer, why = e.clue.why } end
+end
+
+-- The crystal-exhibit rooms show one of the structures baked into the game (exhibit_data.lua), as exhibit_dynamic.lua builds them when it cannot load a live one: atoms as blocks on a grid of 0.7 angstrom, bonds and the unit cell as marker points, and an information panel. Positions are from the model's origin, in the game's axes (y up).
+local SG = require("signs")
+local elements = dofile("mods/crystalminer/exhibit_elements.lua")
+local Live = loadfile("mods/crystalminer/exhibit_live.lua")(elements)
+local function display_name(r)
+	if type(r.name) == "string" and #r.name <= 24 and not r.name:find("%s") then return r.name end
+	return r.formula or "Live structure"
+end
+-- As exhibit_dynamic.lua's plaque_text.
+local function plaque_text(r)
+	local l = r.lattice
+	return string.format("# %s\n## %s\ncell a %.2f b %.2f c %.2f A\nangles %.2f %.2f %.2f deg\n%d atoms\nMaterials Project record %s\nSource: MPContribs\nAtoms: Jmol colours. White lines: bonds. Orange: unit cell.",
+		display_name(r), r.formula or "", l.a, l.b, l.c, l.alpha, l.beta, l.gamma, r.sites, r.id:sub(1, 8))
+end
+local structures = {}
+for _, r in ipairs(dofile("mods/crystalminer/exhibit_data.lua")) do
+	local atoms = {}
+	for _, a in ipairs(r.atoms) do atoms[#atoms + 1] = { a[1] - r.lo[1], a[3] - r.lo[3], a[2] - r.lo[2], a[4] } end
+	local dots = {}
+	for _, d in ipairs(Live.dots(r, { x = 0, y = 0, z = 0 })) do dots[#dots + 1] = { d.pos.x, d.pos.y, d.pos.z, d.colour, d.kind, d.size } end
+	local text = plaque_text(r)
+	local tex, _, w, h = SG.texture("panel", text)
+	-- grid: the record on its 0.7 angstrom grid (atoms, bonds and cell voxels), which Gallery 2's holograms are made from (hologram_logic.lua).
+	structures[#structures + 1] = { id = r.id, name = display_name(r), record_name = r.name, formula = r.formula, md5 = r.md5, fingerprint = Live.fingerprint(r), footprint = Live.footprint(r),
+		lattice = { a = r.lattice.a, b = r.lattice.b, c = r.lattice.c }, sites = r.sites,
+		grid = { lo = r.lo, hi = r.hi, atoms = r.atoms, bonds = r.bonds, cell = r.cell },
+		atoms = atoms, dots = dots, plaque = { text = text, texture = tex, w = w, h = h } }
+end
+-- Colours for drawing, and the radii the live pipeline (web/js/exhibit_live.js) needs for bonds.
+local element_colours, element_data = {}, {}
+for el, e in pairs(elements) do element_colours[el] = e.hex; element_data[el] = { hex = e.hex, radius = e.radius } end
+
+-- The panel and plaque formats and their glyph metrics, so the browser can letter what only it knows (a live structure's panel, a hologram's plaque) as SG.texture would (web/js/sign_layout.js).
+local lettering = { formats = {}, metrics = {} }
+for _, name in ipairs({ "panel", "plaque" }) do
+	local f = SG.FORMATS[name]
+	lettering.formats[name] = f
+	for _, set in ipairs({ f.title, f.meta, unpack(f.body) }) do lettering.metrics[set] = SG.METRICS[set] end
+end
+
+-- Gallery 2's holograms (hologram.lua, hologram_logic.lua): where the six pedestals are and how a structure becomes dust clouds, for web/js/hologram.js.
+local layout = dofile("mods/crystalminer/gallery2_layout.lua")
+local H = loadfile("mods/crystalminer/hologram_logic.lua")(elements, layout)
+local hologram = { centres = layout.pedestals.centres, gallery = H.GALLERY, show_margin = H.SHOW_MARGIN, hide_margin = H.HIDE_MARGIN,
+	max_points = H.MAX_POINTS, max_span = H.MAX_SPAN, static_angle = H.STATIC_ANGLE, hover_base = H.HOVER_BASE, lod = H.LOD,
+	look = { atoms = { H.ATOM_SPREAD, H.ATOM_SIZE, H.ATOM_AMOUNT, H.ATOM_EXPTIME }, bonds = { H.BOND_SPREAD, H.BOND_SIZE, H.BOND_AMOUNT, H.BOND_EXPTIME },
+		cells = { H.CELL_SPREAD, H.CELL_SIZE, H.CELL_AMOUNT, H.CELL_EXPTIME } } }
+
 local T = content.tutor
 local data = {
 	generated_by = "tools/export_web.lua",
@@ -173,6 +229,8 @@ local data = {
 	regions = regions,
 	detect = { cube = cube, catalog = catalog },
 	marker_colours = E.COLOURS,
+	museum = { clues = clues, structures = structures, element_colours = element_colours, elements = element_data, lettering = lettering, hologram = hologram, intro = content.museum.intro,
+		guides = { tryit_pad = guide("tryit_pad") }, welcome = content.lobby.welcome, information = content.lobby.information },
 	tutor = { name = T.name, role = T.role, welcome = T.welcome, about = T.about, disclaimer = T.disclaimer, thinking = T.thinking,
 		here = T.here, suggestions = T.suggestions, board = T.board, max_chars = Tutor.MAX_CHARS, history = Tutor.CHAT_HISTORY },
 }
@@ -193,6 +251,7 @@ for _, c in ipairs({ "white", "light_grey", "grey", "black", "brown", "red", "or
 	"light_blue", "blue", "purple", "magenta", "pink" }) do TEXTURES[#TEXTURES + 1] = c end
 for _, a in ipairs(content.regions) do TEXTURES[#TEXTURES + 1] = "guide_" .. a.id end
 TEXTURES[#TEXTURES + 1] = "guide_symmetry_gate"
+TEXTURES[#TEXTURES + 1] = "guide_tryit_pad"
 local copied = 0
 for _, name in ipairs(TEXTURES) do
 	local f = io.open("mods/crystalminer/textures/crystalminer_" .. name .. ".png", "rb")

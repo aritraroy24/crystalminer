@@ -5,8 +5,8 @@ import * as THREE from "three";
 
 export const COLOURS = ["red", "orange", "yellow", "lime", "green", "cyan", "blue", "purple",
   "magenta", "pink", "light_blue", "brown", "black", "grey", "light_grey", "white"];
-// See-through kinds: drawn after the solid ones, and the ray passes through them.
-const CLEAR = new Set(["frame", "glass"]);
+// See-through kinds: drawn after the solid ones, and the ray passes through them (the museum's glass roof and frames too).
+const CLEAR = new Set(["frame", "glass", "crystalminer:frame", "crystalminer:roof_glass", "crystalminer:glass"]);
 
 const key = (x, y, z) => x + "," + y + "," + z;
 export { key };
@@ -15,6 +15,9 @@ export class Voxels {
   constructor(scene) {
     this.scene = scene;
     this.blocks = new Map();      // "x,y,z" -> kind
+    this.param2 = new Map();      // "x,y,z" -> facedir, for blocks that have one
+    // The shape of a kind for collisions (museum.js sets it for the museum's blocks): null for nothing, "full" for a whole block, or boxes around the block's centre.
+    this.shape = () => "full";
     this.layers = new Map();      // kind -> { mesh, keys: [], index: Map key -> i }
     this.geometry = new THREE.BoxGeometry(1, 1, 1);
     this.loader = new THREE.TextureLoader();
@@ -64,6 +67,15 @@ export class Voxels {
 
   get(x, y, z) { return this.blocks.get(key(x, y, z)); }
 
+  param2Of(x, y, z) { return this.param2.get(key(x, y, z)) || 0; }
+
+  // A block that something else draws (the museum's merged meshes): only known here, for collisions and pointing.
+  setStatic(x, y, z, kind, param2) {
+    const k = key(x, y, z);
+    this.blocks.set(k, kind);
+    if (param2) this.param2.set(k, param2); else this.param2.delete(k);
+  }
+
   set(x, y, z, kind) {
     const k = key(x, y, z);
     const old = this.blocks.get(k);
@@ -85,6 +97,7 @@ export class Voxels {
     const kind = this.blocks.get(k);
     if (!kind) return;
     const l = this.layers.get(kind);
+    if (!l || !l.index.has(k)) { this.blocks.delete(k); this.param2.delete(k); return; }
     const i = l.index.get(k);
     const last = l.keys.length - 1;
     // Move the last instance into the gap.
@@ -106,6 +119,21 @@ export class Voxels {
     for (const l of this.layers.values()) { this.scene.remove(l.mesh); l.mesh.dispose(); }
     this.layers.clear();
     this.blocks.clear();
+    this.param2.clear();
+    this.shape = () => "full";
+  }
+
+  // Whether the block at (x, y, z) overlaps a box [x1, y1, z1, x2, y2, z2] in world coordinates (the player).
+  collides(x, y, z, box) {
+    const kind = this.blocks.get(key(x, y, z));
+    if (!kind) return y <= 0;   // the ground
+    const shape = this.shape(kind, this.param2Of(x, y, z));
+    if (shape === null) return false;
+    if (shape === "full") return true;
+    for (const b of shape) {
+      if (box[0] < x + b[3] && box[3] > x + b[0] && box[1] < y + b[4] && box[4] > y + b[1] && box[2] < z + b[5] && box[5] > z + b[2]) return true;
+    }
+    return false;
   }
 
   solid(x, y, z) {

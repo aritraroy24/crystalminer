@@ -44,6 +44,13 @@ export class UI {
     this.toastTimer = setTimeout(() => (t.className = ""), 4200);
   }
 
+  // The centred notice of a live exhibit load (exhibit_notice.lua): a title and a status line; null hides it.
+  notice(title, status) {
+    const n = $("notice");
+    n.hidden = title === null;
+    if (title !== null) n.replaceChildren(el("div", { class: "title" }, title), el("div", { class: "status" }, status || ""));
+  }
+
   setPlace(name, sub) { $("place-name").textContent = name; $("place-sub").textContent = sub || ""; }
   setHint(text) { $("hint").textContent = text ? "Next: " + text : ""; }
   setLegend(on) { $("legend").hidden = !on; }
@@ -118,6 +125,13 @@ export class UI {
       el("div", { class: "worlds" }, ...data.regions.map((r) => el("button", { class: lessons.unlocked(r) ? "" : "locked", onclick: () => go(r.id), title: "Tier " + r.tier },
         r.name + " (" + r.symbol + ")"))));
     this.open("Your progress", body, { wide: true, buttons: [el("button", { class: "secondary", onclick: reset }, "Start again")] });
+  }
+
+  // A question with a few answers as buttons (the Try-it Pad's "could you turn it to match?"). choices: [[label, action], ...].
+  choose(title, text, choices) {
+    const body = el("div", { class: "quiz" }, ...String(text).split(/\n\n/).map((p) => el("p", {}, p)),
+      el("div", { class: "options" }, ...choices.map(([label, action]) => el("button", { onclick: action }, label))));
+    this.open(title, body);
   }
 
   // Predict before you see: how many blocks will one block become here?

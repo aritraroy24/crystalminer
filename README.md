@@ -370,9 +370,9 @@ unit-tested their settings.
 
 ## The web version
 
-[web/](web/) is crystalminer in the browser, with nothing to install: the Portal Hall with the Symmetry Gate, all 23 worlds, tiers and quizzes, guides, the Free Lab and its challenges, and Prism's chat and billboard, in first person with three.js. It runs on ordinary shared web hosting: the pages are static files, and a small PHP script (`web/api/chat.php`) holds the API key and Prism's grounding text, so neither reaches the browser. The model is chosen as in the game (`provider/model`, DeepSeek by default).
+[web/](web/) is crystalminer in the browser, with nothing to install: the whole museum as the game builds it (recorded from a real build by `tools/export_museum.sh`: every room, sign and exhibit, the Try-it Pad, the clue crystals, the crystal-exhibit rooms, the NPCs, Prism and the billboard), all 23 worlds, tiers and quizzes, guides, and the Free Lab and its challenges, in first person with three.js. It runs on ordinary shared web hosting: the pages are static files, and two small PHP scripts hold the keys, so they never reach the browser: `web/api/chat.php` (Prism's model key and grounding text; the model is chosen as in the game, `provider/model`, DeepSeek by default) and `web/api/mp.php` (the Materials Project key, so the crystal-exhibit rooms load live structures as in the game when `MP_API` is set, and show the built-in ones otherwise).
 
-The web version does not reimplement the science: `luajit tools/export_web.lua` runs the game's engine and writes every world's operations, markers, lessons and texts into `web/data/crystalminer.json`, and `tests/test_web.mjs` checks that the browser copies blocks and detects symmetry exactly as the Lua engine does. How to put it on Hostinger, and what it does not have yet (the galleries, the Try-it Pad, the tour), is in [web/README.md](web/README.md).
+The web version does not reimplement the science: `luajit tools/export_web.lua` runs the game's engine and writes every world's operations, markers, lessons and texts into `web/data/crystalminer.json`, and `tests/test_web.mjs` checks that the browser copies blocks and detects symmetry exactly as the Lua engine does. How to put it on Hostinger, and what it does not have yet (the tour, step-by-step mode, the worlds' architecture), is in [web/README.md](web/README.md).
 
 ## Development
 
@@ -410,7 +410,7 @@ This runs the unit tests (it skips them if no Lua is installed), then starts a r
 | `test_next_hint.lua` | The "Next:" line |
 | `test_billboard.lua` | The billboard's lines, typing, overflow and texture size; every glyph exists |
 | `test_lessons.lua` | Review questions for `/quiz`: none above the player's tier, cycling |
-| `test_web.mjs` | The web version against the Lua engine: every world's copies, detection, lessons, data up to date |
+| `test_web.mjs` | The web version against the Lua engine: every world's copies, detection, lessons, data up to date, the museum, the live exhibits' pipeline, lettering, loader and loading notice, Gallery 2's holograms |
 | `test_tutor.lua` | Tutor request building and response handling, the DeepSeek preset, chat history |
 
 The self-test (`mods/crystalminer/selftest.lua`) places and digs blocks through the registered
@@ -456,7 +456,7 @@ mods/crystalminer/
   sounds/                     Ogg sound effects
   optional_sounds/            the jump sound, sent to players only when sounds are on
   textures/                   generated textures, glyphs and figures
-web/                          the web version (three.js, and PHP for Prism's chat; see web/README.md)
+web/                          the web version (three.js, and PHP for Prism's chat and the live exhibits; see web/README.md)
 tests/                        unit tests and test runners
 docs/TEACHERS.md              a guide for teachers
 docs/images/                  screenshots for this README

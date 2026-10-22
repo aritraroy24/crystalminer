@@ -1,18 +1,13 @@
 <?php
 // Prism's chat for the web version. The browser sends a question, the conversation so far, the player's tier and place; this script adds Prism's grounding text (prompt.txt, made by tools/export_web.lua from the game's tutor.lua) and the API key, asks the model, and returns its answer. The key and the grounding text never reach the browser.
 //
-// The model is named as in LiteLLM, "provider/model", with the same providers and key variables as the game (tutor.lua). Settings come from crystalminer-config.php or a .env file in this folder or one of the four above it (put them above public_html, where the web server cannot hand them out), else from the server's environment. See config.example.php.
+// The model is named as in LiteLLM, "provider/model", with the same providers and key variables as the game (tutor.lua). The settings (common.php) are in crystalminer-config.php or a .env file above public_html; see config.example.php.
 declare(strict_types=1);
+require __DIR__ . '/common.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
-
-function reply(int $code, array $body): void {
-    http_response_code($code);
-    echo json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
 
 // ------------------------------------------------------------------ settings
 
@@ -47,36 +42,6 @@ const DEFAULTS = [
     'per_day' => 2000,            // for the whole site: a ceiling on what the API can cost in a day
 ];
 
-// KEY=VALUE lines, as in the game's .env (tools/luanti_with_env.cmd); # starts a comment.
-function read_env_file(string $path): array {
-    $out = [];
-    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
-        $line = trim($line);
-        if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
-        [$k, $v] = array_map('trim', explode('=', $line, 2));
-        $out[$k] = trim($v, "\"'");
-    }
-    return $out;
-}
-
-function settings(): array {
-    $config = DEFAULTS;
-    $env = [];
-    $dir = __DIR__;
-    for ($i = 0; $i < 5; $i++) {
-        if (is_file($dir . '/crystalminer-config.php')) { $config = array_replace($config, (array) require $dir . '/crystalminer-config.php'); }
-        if (is_file($dir . '/.env')) { $env = array_replace(read_env_file($dir . '/.env'), $env); }
-        $dir = dirname($dir);
-    }
-    $config['env'] = $env;
-    return $config;
-}
-
-function setting(array $config, string $name): string {
-    $v = $config['env'][$name] ?? getenv($name);
-    return is_string($v) ? trim($v) : '';
-}
-
 // The model, its provider and how to reach it, as tutor.lua's T.config does.
 function resolve(array $config): array {
     $spec = trim((string) $config['model']);
@@ -109,27 +74,12 @@ function resolve(array $config): array {
 
 // ------------------------------------------------------------------ limits
 
-// A few questions per visitor, and a ceiling for the whole site per day, kept in files in cache/. .htaccess denies them to the web; they are also .php files that begin by exiting, so a server that ignores .htaccess shows nothing of them either. Visitors are stored as a hash of their address, never the address.
-const GUARD = "<?php exit; ?>\n";
-
-function counter(string $file, callable $update): ?string {
-    $fh = @fopen($file, 'c+');
-    if (!$fh || !flock($fh, LOCK_EX)) return null;
-    $raw = (string) stream_get_contents($fh);
-    $state = json_decode(substr($raw, strlen(GUARD)), true);
-    [$state, $refusal] = $update(is_array($state) ? $state : null);
-    if ($refusal === null) { ftruncate($fh, 0); rewind($fh); fwrite($fh, GUARD . json_encode($state)); }
-    flock($fh, LOCK_UN);
-    fclose($fh);
-    return $refusal;
-}
-
+// A few questions per visitor (one every few seconds, so many an hour), and a ceiling for the whole site per day (common.php keeps the counters).
 function within_limits(array $config): ?string {
-    $dir = __DIR__ . '/cache';
-    if (!is_dir($dir) && !@mkdir($dir, 0700, true)) return null;
+    $dir = cache_dir();
+    if ($dir === null) return null;
     $now = time();
-    $visitor = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? 'unknown') . '|crystalminer');
-    $refusal = counter($dir . '/v_' . $visitor . '.php', function (?array $s) use ($now, $config) {
+    $refusal = counter($dir . '/v_' . visitor() . '.php', function (?array $s) use ($now, $config) {
         $s = $s ?: ['last' => 0, 'hour' => $now, 'n' => 0];
         if ($now - $s['hour'] >= 3600) { $s['hour'] = $now; $s['n'] = 0; }
         if ($now - $s['last'] < $config['seconds_between']) return [$s, 'Give Prism a moment: you can ask again in a few seconds.'];
@@ -139,19 +89,13 @@ function within_limits(array $config): ?string {
         return [$s, null];
     });
     if ($refusal !== null) return $refusal;
-    return counter($dir . '/day_' . gmdate('Y-m-d') . '.php', function (?array $s) use ($config) {
-        $n = (int) ($s['n'] ?? 0);
-        if ($n >= $config['per_day']) return [['n' => $n], 'Prism has answered all the questions it can for today. Try again tomorrow.'];
-        return [['n' => $n + 1], null];
-    });
+    return per_day('day', (int) $config['per_day'], 'Prism has answered all the questions it can for today. Try again tomorrow.');
 }
 
 // ------------------------------------------------------------------ the request
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') reply(405, ['error' => 'Use POST.']);
-// Only this site's own pages may use the chat from a browser.
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if ($origin !== '' && parse_url($origin, PHP_URL_HOST) !== explode(':', $_SERVER['HTTP_HOST'] ?? '')[0]) reply(403, ['error' => 'Not allowed from another site.']);
+same_site_only();
 
 $raw = file_get_contents('php://input', false, null, 0, 65536);
 $in = json_decode((string) $raw, true);
@@ -178,7 +122,7 @@ for ($i = 0; $i + 1 < count($h); $i++) {
 $turns = array_slice($turns, -12);
 $turns[] = ['role' => 'user', 'content' => "Student tier: $tier\nStudent is in: $place\nQuestion: $question"];
 
-$config = settings();
+$config = settings(DEFAULTS);
 $target = resolve($config);
 if (isset($target['error'])) {
     error_log('crystalminer chat: ' . $target['error']);
