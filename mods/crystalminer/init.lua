@@ -14,7 +14,7 @@ local http = core.request_http_api and core.request_http_api()
 
 local storage = core.get_mod_storage()
 -- Raise this when the built world changes; existing worlds are then rebuilt on start.
-local WORLD_VERSION = "21"
+local WORLD_VERSION = "22"
 local GROUND_Y = 0
 local SPAWN = content.lobby.spawn
 local LABEL_RANGE = 30

@@ -299,7 +299,7 @@ local function run()
 		and exhibit_command.params == "list")
 	check("exhibit migration stamp is current", cm.storage:get_string("exhibit_version") == cm.exhibit_version,
 		cm.storage:get_string("exhibit_version"))
-	check("world version remains 15", cm.WORLD_VERSION == "15" and cm.storage:get_string("world_version") == "15",
+	check("world version is 22", cm.WORLD_VERSION == "22" and cm.storage:get_string("world_version") == "22",
 		cm.WORLD_VERSION .. "/" .. cm.storage:get_string("world_version"))
 	for _, room in ipairs(cm.exhibit_rooms or {}) do
 		local entry = cm.exhibit_dynamic_records and cm.exhibit_dynamic_records[room.number]
