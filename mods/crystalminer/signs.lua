@@ -265,6 +265,10 @@ core.register_entity("crystalminer:sign", {
 			self.object:remove()
 			return
 		end
+		if d.opts and d.opts.holo_pedestal then
+			local generation = crystalminer.hologram_generations and crystalminer.hologram_generations[d.opts.holo_pedestal]
+			if generation ~= d.opts.holo_gen then self.object:remove(); return end
+		end
 		self.data = d
 		if d.picture then
 			self.object:set_properties({ textures = { d.picture, "crystalminer_sign_back.png" },

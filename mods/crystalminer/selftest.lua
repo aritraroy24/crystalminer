@@ -308,6 +308,28 @@ local function run()
 		check("random exhibit " .. room.id .. " shell", floor == "crystalminer:stone_brick" and roof == "crystalminer:roof_glass")
 		check("random exhibit " .. room.id .. " live lookup", entry and cm.exhibit_live_at({ x = room.min[1] + 1, y = 1, z = room.min[3] + 1 }) == entry.room_data.live)
 	end
+	-- The live loader's status is two reusable text HUD elements, and disconnect cleanup removes both.
+	if cm.exhibit_notice then
+		local hud_added, hud_removed, hud_changed = 0, 0, 0
+		local fake_notice_player = {
+			get_player_name = function() return "notice_selftest" end,
+			get_hp = function() return 20 end,
+			hud_add = function() hud_added = hud_added + 1; return hud_added end,
+			hud_change = function() hud_changed = hud_changed + 1 end,
+			hud_remove = function() hud_removed = hud_removed + 1 end,
+		}
+		local old_player = core.get_player_by_name
+		core.get_player_by_name = function(name)
+			return name == "notice_selftest" and fake_notice_player or old_player(name)
+		end
+		cm.exhibit_notice.begin("notice_selftest", 3)
+		cm.exhibit_notice.update("notice_selftest", "checking", "Checking a record")
+		check("exhibit loading notice has reusable title and status HUDs", hud_added == 2 and hud_changed >= 2,
+			hud_added .. "/" .. hud_changed)
+		cm.exhibit_notice.remove("notice_selftest")
+		check("exhibit loading notice cleanup removes both HUDs", hud_removed == 2, tostring(hud_removed))
+		core.get_player_by_name = old_player
+	end
 	check("structure exhibit live lookup leaves rooms", not cm.exhibit_live_at({ x = 0, y = 0, z = 0 }))
 	check("every world has a portal back to the museum", backs == #cm.regions,
 		tostring(backs) .. " " .. table.concat(missing_backs, ", "))
@@ -563,6 +585,134 @@ local function run()
 	check("markers: every spawner was for the player, endless, at one point", defs_ok)
 	api.add, api.delete = saved_add, saved_delete
 
+	-- Gallery 2 holograms: the six projectors are static museum furniture; the marker API is
+	-- swapped here so scan, cloud timing and generation refresh can be checked without a real client.
+	local holo_centres = cm.hologram_centres or {}
+	local gallery2 = cm.gallery2_layout
+	local old_holo_centres = {
+		{ x = -45, z = 28 }, { x = -31, z = 28 }, { x = -45, z = 40 },
+		{ x = -31, z = 40 }, { x = -45, z = 52 }, { x = -31, z = 52 },
+	}
+	for n, c in ipairs(holo_centres) do
+		local lamp = core.get_node({ x = c.x, y = 2, z = c.z }).name
+		local left = { x = c.x - 1, y = 1, z = c.z - 3 }
+		local right = { x = c.x + 1, y = 1, z = c.z - 3 }
+		check("hologram pedestal " .. n .. " lamp and no manual controls", lamp == "crystalminer:lamp"
+			and core.get_node(left).name == "air" and core.get_node(right).name == "air")
+		local plaques = 0
+		for _, object in ipairs(core.get_objects_inside_radius({ x = c.x, y = 2, z = c.z - 2 }, 3)) do
+			local entity = object:get_luaentity()
+			if entity and entity.name == "crystalminer:sign" and entity.data and entity.data.opts
+				and entity.data.opts.holo_pedestal == n then plaques = plaques + 1 end
+		end
+		check("hologram pedestal " .. n .. " has one plaque", plaques == 1, tostring(plaques))
+	end
+	if gallery2 then
+		local carpet_ok = true
+		for x = -39, -35 do
+			for z = -3, 59 do
+				local occupied = x >= gallery2.haeuy.base.x0 and x <= gallery2.haeuy.base.x1
+					and z >= gallery2.haeuy.base.z0 and z <= gallery2.haeuy.base.z1
+				if not occupied then carpet_ok = carpet_ok and core.get_node({ x = x, y = 1, z = z }).name == "crystalminer:carpet" end
+			end
+		end
+		check("Gallery 2 has the widened carpet", carpet_ok)
+		for _, b in ipairs(gallery2.benches) do
+			check("Gallery 2 new bench at " .. b.x0 .. "," .. b.z0,
+				core.get_node({ x = b.x0, y = 1, z = b.z0 }).name == "crystalminer:bench")
+		end
+		for _, x in ipairs({ -50, -26 }) do for _, z0 in ipairs({ 7, 39 }) do
+			check("Gallery 2 old bench removed at " .. x .. "," .. z0,
+				core.get_node({ x = x, y = 1, z = z0 }).name == "air")
+		end end
+	end
+	-- Every old centre lies inside a new pedestal (they moved by 2 to 3 blocks), so check the old cells that
+	-- are NOT covered by a new pedestal: pedestal blocks, lamp, plaque holder and button spots must be gone.
+	for _, c in ipairs(old_holo_centres) do
+		local leftover, checked = {}, 0
+		for dx = -2, 2 do for dz = -3, 2 do
+			local x, z, covered = c.x + dx, c.z + dz, false
+			for _, n in ipairs(holo_centres) do if math.abs(x - n.x) <= 2 and math.abs(z - n.z) <= 2 then covered = true end end
+			if not covered then
+				for y = 1, 3 do
+					checked = checked + 1
+					local name = core.get_node({ x = x, y = y, z = z }).name
+					if name ~= "air" then leftover[#leftover + 1] = x .. "," .. y .. "," .. z .. "=" .. name end
+				end
+			end
+		end end
+		check("old hologram pedestal at " .. c.x .. "," .. c.z .. " leaves nothing behind", #leftover == 0 and checked > 0, table.concat(leftover, " "))
+	end
+	if cm.hologram_step_player and holo_centres[3] then
+		-- The self-test world has no web access, so lend every empty room a baked fallback for the
+		-- Gallery-wide entrance check. Restore the records after the isolated marker test.
+		local saved_records = {}
+		for n = 1, 6 do
+			local entry = cm.exhibit_dynamic_records[n]
+			saved_records[n] = entry.record
+			if not entry.record then entry.record = cm.exhibit_data[(n - 1) % #cm.exhibit_data + 1] end
+		end
+		local old_marker_api = cm.marker_api
+		local shown, removed, defs = 0, 0, {}
+		cm.marker_api = { add = function(def) shown = shown + 1; defs[#defs + 1] = def; return shown end, delete = function() removed = removed + 1 end }
+		local position = { x = -38, y = 1, z = -3 }
+		local fake_holo_player = {
+			get_player_name = function() return "hologram_selftest" end,
+			get_pos = function() return position end,
+			is_player = function() return true end,
+		}
+		cm.hologram_step_player(fake_holo_player)
+		for _ = 1, 50 do cm.hologram_step_player(fake_holo_player) end
+		local states = cm.hologram_viewers.hologram_selftest or {}
+		local all_full = true
+		for n = 1, 6 do all_full = all_full and states[n] and states[n].mode == "full" end
+		check("holograms scan at the Gallery entrance", all_full, tostring(shown))
+		local entrance_defs = #defs
+		local alive = 0
+		for i = 1, entrance_defs do if defs[i].minsize ~= 3.2 then alive = alive + defs[i].amount * defs[i].minexptime end end
+		check("Gallery entrance holograms stay under the particle budget", alive < 14000, tostring(alive))
+		local before_ids = states[1] and #states[1].ids or 0
+		position = { x = holo_centres[1].x, y = 1, z = holo_centres[1].z }
+		cm.hologram_step_player(fake_holo_player)
+		states = cm.hologram_viewers.hologram_selftest or {}
+		check("near pedestal resends a denser tier-1 hologram", states[1] and states[1].mode == "full"
+			and states[1].tier == 1 and #states[1].ids > before_ids)
+		local record = cm.exhibit_dynamic_records and cm.exhibit_dynamic_records[3] and cm.exhibit_dynamic_records[3].record
+		check("hologram scan reveals points", record ~= nil and shown > 0, tostring(shown))
+		if record then
+			local attached, correct_timing = false, true
+			for _, def in ipairs(defs) do
+				attached = attached or def.attached ~= nil
+				local valid = def.minexptime == 2.0 and def.maxexptime == 2.0
+					and (def.amount == 18 or def.amount == 9 or def.amount == 8 or def.amount == 5 or def.amount == 4 or def.amount == 3 or def.amount == 2)
+				correct_timing = correct_timing and valid
+			end
+			check("hologram particles use static tier timings", not attached and correct_timing, tostring(#defs))
+			local before_generation = cm.hologram_generations[3]
+			local before_rescan = shown
+			cm.exhibit_changed[#cm.exhibit_changed](3, record)
+			cm.hologram_step_player(fake_holo_player)
+			cm.hologram_step_player(fake_holo_player)
+			check("hologram exhibit change bumps generation and rescans", cm.hologram_generations[3] == before_generation + 1
+				and shown > before_rescan)
+		end
+		position = { x = 0, y = 1, z = 0 }; cm.hologram_step_player(fake_holo_player)
+		check("hologram leaving removes points", record ~= nil and removed > 0, tostring(removed))
+		cm.marker_api = old_marker_api
+		for n = 1, 6 do cm.exhibit_dynamic_records[n].record = saved_records[n] end
+	end
+	for _, p in ipairs(cm.exhibit_portals or {}) do
+		local total, tagged = 0, 0
+		for _, object in ipairs(core.get_objects_inside_radius({ x = p.pos.x > 0 and 57.48 or -57.48, y = 3, z = p.pos.z }, 3)) do
+			local entity = object:get_luaentity()
+			if entity and entity.name == "crystalminer:sign" then
+				total = total + 1
+				if entity.data and entity.data.opts and entity.data.opts.exhibit_portal_gen then tagged = tagged + 1 end
+			end
+		end
+		check("exhibit portal at z " .. p.pos.z .. " has exactly one current plaque", total == 1 and tagged == 1, total .. "/" .. tagged)
+	end
+
 	-- One window at a time: a guide waits for the pre-test, then shows for where the player is.
 	do
 		local who, shown = "queuetester", {}
@@ -718,6 +868,10 @@ cm.when_exhibits_ready(function()
 	local spots = { { x = 0, y = 5, z = -30 } }
 	for _, d in ipairs(cm.G.displays(content.gate.at)) do spots[#spots + 1] = { x = d.look_at.x, y = 7, z = -30 } end
 	spots[#spots + 1] = { x = cm.PAD_BUILD.x - 2, y = 4, z = cm.PAD_BUILD.z }
+	-- So are the plaques over the six exhibit portals in the Portal Hall.
+	for _, p in ipairs(cm.exhibit_portals or {}) do spots[#spots + 1] = { x = p.pos.x > 0 and 57 or -57, y = 3, z = p.pos.z } end
+	-- The hologram plaques in Gallery 2 are signs too.
+	for _, c in ipairs(cm.hologram_centres or {}) do spots[#spots + 1] = { x = c.x, y = 2, z = c.z - 2 } end
 	for _, live in ipairs(cm.regions) do
 		local pl = cm.D.plaza(live.region)
 		spots[#spots + 1] = { x = pl.arrive.x, y = 8, z = pl.arch_z }
