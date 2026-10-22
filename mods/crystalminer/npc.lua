@@ -16,7 +16,7 @@ local VISITOR_POSITIONS = {
 		message = "Look closely at the copies in Gallery 1. Can you name the symmetry operation that made each one?" },
 	{ x = 30, y = cm.GROUND_Y + 1, z = -15,
 		message = "I am collecting examples of translation, rotation, reflection and inversion. Which is your favourite?" },
-	{ x = -35, y = cm.GROUND_Y + 1, z = 10,
+	{ x = -33, y = cm.GROUND_Y + 1, z = 10,
 		message = "Gallery 2 tells the story of how people discovered crystal symmetry. Read the timeline from south to north." },
 	{ x = 35, y = cm.GROUND_Y + 1, z = 10,
 		message = "After Gallery 2, visit Gallery 3 to see crystal models, then continue north to the Portal Hall." },

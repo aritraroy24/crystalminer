@@ -5,7 +5,9 @@ local cm = crystalminer
 local SG = cm.SG
 local GROUND = cm.GROUND_Y
 local SC = dofile(core.get_modpath(core.get_current_modname()) .. "/sculptures.lua")
+local LAYOUT = dofile(core.get_modpath(core.get_current_modname()) .. "/gallery2_layout.lua")
 cm.SCULPTURES = SC
+cm.gallery2_layout = LAYOUT
 
 local function node(name, desc, tiles, box, extra)
 	local def = { description = desc, drawtype = "nodebox", paramtype = "light", paramtype2 = "facedir",
@@ -98,11 +100,8 @@ local function furnish()
 	bench(12, 16, -9, -9, "s")
 	for _, p in ipairs({ { -59, -29 }, { 59, -29 }, { -59, -5 }, { 59, -5 } }) do plant(p[1], p[2]) end
 	-- Gallery 2: a carpet along the timeline, benches facing the panels, plants.
-	carpet(-41, -40, -3, 59)
-	bench(-50, -50, 7, 9, "w")
-	bench(-26, -26, 7, 9, "e")
-	bench(-50, -50, 39, 41, "w")
-	bench(-26, -26, 39, 41, "e")
+	carpet(LAYOUT.carpet.x0, LAYOUT.carpet.x1, LAYOUT.carpet.z0, LAYOUT.carpet.z1)
+	for _, b in ipairs(LAYOUT.benches) do bench(b.x0, b.x1, b.z0, b.z1, b.face) end
 	for _, p in ipairs({ { -59, -3 }, { -17, -3 }, { -59, 59 }, { -17, 59 } }) do plant(p[1], p[2]) end
 	-- Gallery 3: plants in the corners (the models fill the room).
 	for _, p in ipairs({ { -15, -3 }, { -15, 59 } }) do plant(p[1], p[2]) end
@@ -118,4 +117,22 @@ local function furnish()
 end
 cm.furnish = furnish
 
-table.insert(cm.on_build, function() furnish() end)
+local function migrate_gallery2()
+	cm.load_region({ min = { -61, 0, -5 }, size = { 47, 5, 67 } })
+	for _, x in ipairs({ -50, -26 }) do
+		for _, z0 in ipairs({ 7, 39 }) do
+			for z = z0, z0 + 2 do set(x, GROUND + 1, z, "air") end
+		end
+	end
+	carpet(LAYOUT.carpet.x0, LAYOUT.carpet.x1, LAYOUT.carpet.z0, LAYOUT.carpet.z1)
+	for _, b in ipairs(LAYOUT.benches) do bench(b.x0, b.x1, b.z0, b.z1, b.face) end
+	cm.storage:set_string("gallery2_layout", "1")
+end
+
+table.insert(cm.on_build, function()
+	furnish()
+	cm.storage:set_string("gallery2_layout", "1")
+end)
+cm.when_ready(function()
+	if cm.storage:get_string("gallery2_layout") ~= "1" then migrate_gallery2() end
+end)

@@ -64,6 +64,25 @@ local function clear_box(box)
 	cm.fill(box.min[1], maxp[1], box.min[2], maxp[2], box.min[3], maxp[3], "air")
 end
 
+-- The plaque over each hall portal carries a generation tag. Signs from earlier versions of these portals
+-- (the first baked rooms said "East room: AcSe3 and Mg") sleep in unloaded blocks, where no code can
+-- find them when a new plaque is placed, and would show through behind it. Any sign at a plaque spot
+-- without the current tag removes itself when it wakes up (see the wrapper below).
+local PLAQUE_GEN = "1"
+local function plaque_pos(room)
+	return { x = room.wall_x + (room.face == "e" and 0.52 or -0.52), y = 3, z = room.portal.z }
+end
+
+local function place_portal_plaque(room)
+	for _, object in ipairs(core.get_objects_inside_radius(plaque_pos(room), 3)) do
+		local entity = object:get_luaentity()
+		if entity and entity.name == "crystalminer:sign" then object:remove() end
+	end
+	cm.SG.on_wall({ x = room.wall_x, y = 3, z = room.portal.z }, room.face, "plaque",
+		"# Crystal Structures\n## Exhibit " .. room.number .. "\nA random real structure", nil,
+		{ exhibit_portal = room.number, exhibit_portal_gen = PLAQUE_GEN })
+end
+
 local function build_side_portal(room)
 	local z, x, wall = room.portal.z, room.portal.x, room.wall_x
 	for y = 1, 4 do
@@ -76,8 +95,7 @@ local function build_side_portal(room)
 	local meta = core.get_meta({ x = x, y = 1, z = z })
 	meta:set_string("target", room.id)
 	meta:set_string("infotext", "Random crystal exhibit " .. room.number .. " (punch it)")
-	cm.SG.on_wall({ x = wall, y = 3, z = z }, room.face, "plaque",
-		"# Crystal Structures\n## Exhibit " .. room.number .. "\nA random real structure")
+	place_portal_plaque(room)
 end
 
 local function build_shell(room)
@@ -155,10 +173,33 @@ end
 local function build_all()
 	for _, box in ipairs(LEGACY_BOXES) do clear_box(box) end
 	for _, room in ipairs(ROOMS) do build_shell(room); build_side_portal(room) end
+	cm.storage:set_string("exhibit_plaque_version", PLAQUE_GEN)
 end
 
 cm.exhibit_portals = {}
 for _, room in ipairs(ROOMS) do cm.exhibit_portals[#cm.exhibit_portals + 1] = { pos = { x = room.portal.x, y = 1, z = room.portal.z }, target = room.id } end
+
+do
+	local def = core.registered_entities["crystalminer:sign"]
+	local original = def and def.on_activate
+	if original then
+		def.on_activate = function(self, staticdata, ...)
+			local ok, data = pcall(core.deserialize, staticdata or "")
+			local pos = self.object:get_pos()
+			if ok and type(data) == "table" and pos then
+				for _, room in ipairs(ROOMS) do
+					local p = plaque_pos(room)
+					if math.abs(pos.x - p.x) < 1 and math.abs(pos.y - p.y) < 2 and math.abs(pos.z - p.z) < 3
+						and not (data.opts and data.opts.exhibit_portal_gen == PLAQUE_GEN) then
+						self.object:remove()
+						return
+					end
+				end
+			end
+			return original(self, staticdata, ...)
+		end
+	end
+end
 
 table.insert(cm.on_build, function()
 	build_all()
@@ -173,6 +214,17 @@ cm.when_ready(function()
 		else core.log("error", "[crystalminer] exhibit rooms could not be generated; they are built at the next start") end
 		mark_ready()
 	end)
+end)
+
+-- Worlds already at this exhibit version only need their six portal plaques placed once, with the tag.
+cm.when_ready(function()
+	if cm.storage:get_string("exhibit_version") ~= EXHIBIT_VERSION then return end -- the migration above builds them
+	if cm.storage:get_string("exhibit_plaque_version") == PLAQUE_GEN then return end
+	for _, room in ipairs(ROOMS) do
+		cm.load_region({ min = { room.wall_x - 1, 1, room.portal.z - 3 }, size = { 3, 5, 7 } })
+		place_portal_plaque(room)
+	end
+	cm.storage:set_string("exhibit_plaque_version", PLAQUE_GEN)
 end)
 
 local old_is_protected = core.is_protected
