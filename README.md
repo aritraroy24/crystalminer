@@ -173,9 +173,8 @@ no portraits: the game only draws what can be drawn from the science. The rooms 
 benches, plants, an information desk, mineral sculptures (fluorite, pyrite, halite) and two
 symmetry puzzles in Gallery 1.
 
-Museum NPCs: a blue information-desk character in Visitor information answers common questions and
-can pass a typed question to the tutor (when the tutor is set up; the same limits as `/ask` apply),
-and eight orange visitors stroll around the foyer, the Workshop, Visitor information and the
+Museum NPCs: a blue information-desk character in Visitor information greets visitors and opens
+Prism's chat (see [The AI tutor](#the-ai-tutor)), and eight orange visitors stroll around the foyer, the Workshop, Visitor information and the
 galleries and give a tip when right-clicked.
 
 ### The worlds
@@ -319,54 +318,41 @@ informed consent; the notice in the game is not a substitute.
 
 ## The AI tutor
 
-**Prism** is the museum's AI tutor: a smiling crystal floating above a screen on the information desk in Visitor information, just east of the foyer where everyone starts. Right-click the screen (or Prism), type `/ask` anywhere, or press the **Ask Prism** button on the progress board (**I**) to open the chat window:
-
-- a conversation in bubbles, which Prism remembers (the last six questions and answers go to the model with each new one) until **New chat**;
-- three suggested questions for the player's tier (the first about the world they are in), a box to type in (Enter sends), and the player's tier and place, which Prism uses to pitch its answer;
-- "Prism is thinking..." while an answer is on its way; if the window was closed meanwhile, a line in the chat says the answer is waiting.
-
-**Prism's billboard.** A 12 × 7 pixel screen high on the wall of Visitor information above Prism's desk shows the latest question anyone asked Prism and Prism's answer, typed out line by line in an LED-style pixel font, with Prism's **bold** words in amber. It never shows who asked. An answer stays up for five minutes; in between, the screen shows a welcome and the words to know, one every 20 seconds. Right-clicking the billboard opens the chat window too.
-
-`/ask <question>` opens the window and asks straight away. `/symmetry` turns a description such as "a fourfold axis with mirrors" into a point group. The tutor runs on DeepSeek, on Claude, or on any OpenAI-compatible model, including free open-source models on your own computer.
+**Prism**, a crystal floating above a screen on the information desk in Visitor information (east
+of the foyer), is the museum's AI tutor. Right-click Prism, its screen, its billboard on the wall
+above or the information-desk character, press **Ask Prism** on the progress board (**I**), or type
+`/ask` anywhere to open the chat window; `/ask <question>` asks straight away. Prism remembers the
+conversation until **New chat**, suggests questions for the player's tier, and answers only from
+the reviewed lesson text in `content.lua`, without giving away quiz answers. The billboard shows the
+latest question (never who asked) and Prism's answer to everyone in the room. `/symmetry
+<description>` uses the same model to pick a point group, which the symmetry engine then checks.
 
 **Setup** (Luanti **Settings**, show advanced settings):
 
-1. Set **Mods → HTTP mods** (`secure.http_mods`) to `crystalminer`.
-2. Give the model's provider its API key, in the environment variable LiteLLM uses for it (see below) or in **Tutor: API key**. The default model is DeepSeek's, so `DEEPSEEK_API_KEY` is all it needs.
-3. To use another model, set **Tutor: model** under **Content: Games → crystalminer**, or the environment variable `CRYSTALMINER_TUTOR_MODEL`.
+1. **HTTP mods** (`secure.http_mods`): `crystalminer`.
+2. **Content: Games → crystalminer → Tutor: model**: `provider/model`, named as in
+   [LiteLLM](https://docs.litellm.ai/docs/providers). Default `deepseek/deepseek-flash`; also
+   `anthropic/claude-opus-5-5`, `openai/…`, `gemini/…`, `ollama/llama3.2` (free, on your computer)
+   and the others listed in the setting.
+3. **Tutor: API key** (for Claude: **Tutor: Anthropic API key**), or the provider's environment
+   variable (`DEEPSEEK_API_KEY`, `ANTHROPIC_API_KEY`, …; see [.env.example](.env.example)). Luanti
+   sees a variable only when it is started from where the variable is set (a terminal, or
+   `tools/luanti_with_env.cmd` on Windows), not when opened from the Dock or Start menu. `.env`
+   files are ignored by git; never commit a key.
 
-**Choosing the model.** Models are named as in [LiteLLM](https://docs.litellm.ai/docs/providers), `provider/model`, and each provider's key is read from the variable LiteLLM reads:
+Older settings keep working: **Tutor: provider** `anthropic` with the Anthropic key, or
+`openai_compatible` with **Tutor: base URL** and the model's exact name (for example
+`https://api.deepseek.com` and `deepseek-flash`). A player may ask every 20 s with Claude (paid per
+request) and every 5 s otherwise, in at most 300 characters; at most three questions wait at once.
 
-| Model | Provider | Key |
-|---|---|---|
-| `deepseek/deepseek-flash` (default), `deepseek/deepseek-v4-pro` | DeepSeek | `DEEPSEEK_API_KEY` |
-| `anthropic/claude-opus-5-5` | Claude (Messages API) | `ANTHROPIC_API_KEY` or **Tutor: Anthropic API key** |
-| `openai/<model>` | OpenAI | `OPENAI_API_KEY` |
-| `gemini/<model>` | Google Gemini | `GEMINI_API_KEY` |
-| `groq/`, `mistral/`, `xai/`, `cerebras/`, `perplexity/` `<model>` | Groq, Mistral, xAI, Cerebras, Perplexity | `GROQ_API_KEY`, `MISTRAL_API_KEY`, `XAI_API_KEY`, `CEREBRAS_API_KEY`, `PERPLEXITYAI_API_KEY` |
-| `openrouter/<org>/<model>`, `together_ai/<org>/<model>`, `fireworks_ai/<model>` | OpenRouter, Together AI, Fireworks AI | `OPENROUTER_API_KEY`, `TOGETHERAI_API_KEY`, `FIREWORKS_AI_API_KEY` |
-| `ollama/llama3.2`, `lm_studio/<model>`, `hosted_vllm/<model>` | A server on this computer or network | none; the address from `OLLAMA_API_BASE`, `LM_STUDIO_API_BASE`, `HOSTED_VLLM_API_BASE` or **Tutor: base URL** |
-| `litellm_proxy/<model>` | Any model a [LiteLLM proxy](https://docs.litellm.ai/docs/simple_proxy) serves: Bedrock, Vertex AI, Azure and the rest | `LITELLM_PROXY_API_KEY`, at `LITELLM_PROXY_API_BASE` (default `http://localhost:4000`) |
+Prism's chat sends about 4,700 tokens of lesson text, so give a local server a context of 8,192
+tokens; with a smaller one Prism falls back to the shorter `/ask` request, without the conversation.
 
-Luanti runs only Lua, so the game cannot use LiteLLM itself: it talks to Claude through the Messages API and to every other provider through its OpenAI-compatible Chat Completions API, and reaches anything else through a LiteLLM proxy. **Tutor: provider** `openai_compatible` with **Tutor: base URL** still connects to any other OpenAI-style server, sending the model's name exactly as written. For a free local model, install [Ollama](https://ollama.com), run `ollama pull llama3.2`, and set the model to `ollama/llama3.2`.
-
-**Keeping keys in a `.env` file** (Windows): copy [.env.example](.env.example) to a file named `.env` in the game folder or the folder above it, fill in the key for your provider (and `CRYSTALMINER_TUTOR_MODEL` to change the model), and start Luanti with `tools/luanti_with_env.cmd`. It passes the file's variables to Luanti only, so no key is written into Luanti's settings. The repository ignores `.env` files. On macOS or Linux, `export DEEPSEEK_API_KEY=...` (and so on) before starting Luanti does the same.
-
-A player can ask a question every 20 seconds with Claude (it is paid per request) and every 5 with the other providers; at most three questions wait for an answer at once across the server.
-
-**Keeping it accurate.** The tutor answers only from the reviewed lesson text in
-`mods/crystalminer/content.lua` (Prism's chat also has the texts of Galleries 2 and 3, the history
-panels and the crystal structures). It does not give away quiz answers or the Mystery Lab's
-symmetry. For `/symmetry` it only picks a symbol; the game's symmetry engine
-checks the symbol, builds the group and states every fact about it. Anything the model writes is
-labelled "Tutor:" or "Tutor's note (may be wrong)", and Prism's window says under every
-conversation that it can be wrong. Typing a symbol directly (`/symmetry 4mm`) works without the
-tutor.
-
-**Tested.** The open-model path was run on a Luanti server with Qwen2.5-1.5B-Instruct
-(llama.cpp): both commands worked, with replies in 10–60 s on two CPU cores. Prism's chat was run
-on Luanti 5.17 against DeepSeek's API (`deepseek-flash`): a question and a follow-up that built on
-it, each answered in a few seconds. The other providers' settings (addresses, key variables, model names) are unit-tested but have not been run against their live APIs; neither has the Claude path.
+**Tested.** By us: Prism's chat (a question and a follow-up), `/ask` and `/symmetry` through the
+OpenAI-compatible path with Qwen2.5-1.5B-Instruct (llama-cpp-python) on a Luanti server, with an
+8,192- and a 4,096-token context. The contributor of Prism reports it working against DeepSeek's API
+(`deepseek-flash`); we have not run DeepSeek, Claude or the other hosted providers live, only
+unit-tested their settings.
 
 ## Development
 
@@ -407,7 +393,7 @@ This runs the unit tests (it skips them if no Lua is installed), then starts a r
 | `test_tutor.lua` | Tutor request building and response handling, the DeepSeek preset, chat history |
 
 The self-test (`mods/crystalminer/selftest.lua`) places and digs blocks through the registered
-callbacks and runs about 95 checks: locking, quizzes, saving, the Gate, the Try-it Pad, the floor
+callbacks and runs about 130 checks: locking, quizzes, saving, the Gate, the Try-it Pad, the floor
 tilings, the architecture, predictions, step mode, the museum and its clues, the teleporters, the
 tour, the data export, the teacher view, the Free Lab, the museum's signs, doors and doorways, the
 Portal Hall and every world's plaza, arch and portal back, Prism's desk and chat, the symmetry markers and the order of the
@@ -474,15 +460,18 @@ them under **Settings → Content: Games → crystalminer**: the tutor settings,
 - Graw & Stalke, *J. Appl. Cryst.* 55, 144–148 (2022), on the topics students find hardest.
 - International Tables for Crystallography, Vol. A, for point-group orders, plane-group
   multiplicities and symbols.
-- [DejaVu fonts](https://dejavu-fonts.github.io/) for the lettering on signs and in figures.
+- [DejaVu fonts](https://dejavu-fonts.github.io/) for the lettering on signs, in figures and on
+  Prism's billboard.
 - The [Materials Project](https://materialsproject.org) and its MPContribs platform for the crystal
   structures in the live exhibits (CC BY 4.0; see [LICENSE.media](LICENSE.media)), and the Jmol
   element colours (values from ASE's `jmol_colors`).
 - Contributors: [@lvtamayo](https://github.com/lvtamayo) for the live
-  crystal exhibits, and Davis Magpantay ([@Dexva](https://github.com/Dexva)) for the museum NPCs.
+  crystal exhibits, Davis Magpantay ([@Dexva](https://github.com/Dexva)) for the museum NPCs, and
+  [@aritraroy24](https://github.com/aritraroy24) for Prism, the AI tutor's chat window and pixel
+  billboard, and the provider/model tutor setting.
 - [Anthropic](https://www.anthropic.com)'s Claude models. Much of the code, texts, figures and
   tests were written with Claude Opus 5.5 and Claude Sonnet 5.5 through Claude Code, under the
-  author's direction and review. The in-game tutor calls Claude Opus 5.5 through the Claude API.
+  author's direction and review. The in-game tutor can call Claude Opus 5.5 through the Claude API.
 
 ## Licence
 
