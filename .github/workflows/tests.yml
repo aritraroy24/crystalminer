@@ -42,6 +42,10 @@ jobs:
           luajit -v
           for t in tests/test_*.lua; do luajit "$t"; done
 
+      # The web version (web/) against the Lua engine; Node.js is on GitHub's runners already.
+      - name: Web version tests
+        run: node tests/test_web.mjs
+
       # /usr/games/minetestserver is Debian's launcher script, which logs to
       # /var/log/minetest (not writable here), so run the real binary the package
       # installs (found with dpkg -L). The self-test occasionally segfaults at startup (seen on 5.4.1), in

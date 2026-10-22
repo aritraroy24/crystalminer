@@ -1,0 +1,16 @@
+# Only chat.php (Prism) and mp.php (the crystal exhibits) may be reached from the web: not common.php, the grounding text, the rate-limit and cache files in cache/, or a config or .env file left here by mistake.
+<IfModule mod_authz_core.c>
+  Require all denied
+  <FilesMatch "^(chat|mp)\.php$">
+    Require all granted
+  </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+  <FilesMatch "^(chat|mp)\.php$">
+    Order deny,allow
+    Allow from all
+  </FilesMatch>
+</IfModule>
+Options -Indexes

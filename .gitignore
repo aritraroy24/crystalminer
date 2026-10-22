@@ -27,3 +27,6 @@ desktop.ini
 *.zip
 
 *.env
+# The web version: rate-limit files and keys on a test server
+web/api/cache/
+crystalminer-config.php

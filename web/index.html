@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>crystalminer</title>
+<meta name="description" content="Learn the symmetry of crystals by building in worlds that copy every block you place.">
+<!-- The link preview (Open Graph, X/Twitter): og.jpg is 1200 x 630. A copy of the game on another domain should change these addresses. -->
+<link rel="canonical" href="https://crystalminer.online/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="crystalminer">
+<meta property="og:url" content="https://crystalminer.online/">
+<meta property="og:title" content="crystalminer: learn crystal symmetry, block by block">
+<meta property="og:description" content="A 3D museum and 23 symmetry worlds in your browser: build, and watch every block copied by the symmetry of the world. Real crystal structures from the Materials Project, and Prism, an AI tutor.">
+<meta property="og:image" content="https://crystalminer.online/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The crystalminer logo and title beside a crystal structure of coloured atoms in a museum room.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="crystalminer: learn crystal symmetry, block by block">
+<meta name="twitter:description" content="A 3D museum and 23 symmetry worlds in your browser, real structures from the Materials Project, and Prism, an AI tutor.">
+<meta name="twitter:image" content="https://crystalminer.online/og.jpg">
+<meta name="theme-color" content="#141A26">
+<link rel="icon" href="textures/tutor_icon.png">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="hud">
+  <div id="where"><div id="place-name">Loading...</div><div id="place-sub"></div></div>
+  <div id="tools">
+    <button data-action="guide" title="Guide to this place">G Guide</button>
+    <button data-action="quiz" title="Quiz">Q Quiz</button>
+    <button data-action="progress" title="Your progress">I Progress</button>
+    <button data-action="prism" class="prism" title="Ask Prism, the AI tutor">P Ask Prism</button>
+    <button data-action="hall" title="Back to the Portal Hall">H Hall</button>
+    <button data-action="lab" title="Free Lab symmetry">L Lab</button>
+  </div>
+  <div id="crosshair"></div>
+  <div id="legend" hidden>
+    <span style="--c:#FFD700">2-fold axis</span><span style="--c:#32CD32">3-fold</span><span style="--c:#FF3030">4-fold</span>
+    <span style="--c:#B040FF">-4</span><span style="--c:#40C0FF">mirror plane</span><span style="--c:#FFFFFF">inversion centre</span>
+    <span style="--c:#FF8C00">unit cell</span><em>M hides the markers</em>
+  </div>
+  <div id="hint"></div>
+  <div id="hotbar"></div>
+</div>
+
+<div id="start">
+  <div class="card">
+    <img src="textures/tutor_avatar.png" alt="" class="logo">
+    <h1>crystalminer</h1>
+    <p class="lead">Symmetry and crystals, block by block. Every world has a symmetry: whatever you build there is copied by every operation of its group.</p>
+    <div class="controls">
+      <section>
+        <h3>Move</h3>
+        <div class="row"><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>walk</span></div>
+        <div class="row"><span class="keys"><kbd class="mouse">Mouse</kbd></span><span>look around</span></div>
+        <div class="row"><span class="keys"><kbd class="wide">Space</kbd></span><span>jump</span></div>
+        <div class="row"><span class="keys"><kbd>K</kbd></span><span>fly: <kbd class="small">Space</kbd> up, <kbd class="small">Shift</kbd> down</span></div>
+        <div class="row"><span class="keys"><kbd>J</kbd></span><span>go fast</span></div>
+      </section>
+      <section>
+        <h3>Build</h3>
+        <div class="row"><span class="keys"><kbd class="mouse">Right-click</kbd></span><span>place a block</span></div>
+        <div class="row"><span class="keys"><kbd class="mouse">Left-click</kbd></span><span>remove a block, or punch a portal</span></div>
+        <div class="row"><span class="keys"><kbd>1</kbd>&ndash;<kbd>8</kbd></span><span>choose a colour (or the wheel)</span></div>
+        <div class="row"><span class="keys"><kbd>M</kbd></span><span>show or hide symmetry markers</span></div>
+      </section>
+      <section>
+        <h3>Learn</h3>
+        <div class="row"><span class="keys"><kbd>G</kbd></span><span>guide to this place</span></div>
+        <div class="row"><span class="keys"><kbd>Q</kbd></span><span>quiz</span></div>
+        <div class="row"><span class="keys"><kbd>I</kbd></span><span>your progress</span></div>
+        <div class="row"><span class="keys"><kbd class="prism">P</kbd></span><span>ask Prism, the AI tutor</span></div>
+        <div class="row"><span class="keys"><kbd>H</kbd></span><span>back to the Portal Hall</span></div>
+        <div class="row"><span class="keys"><kbd class="wide">Esc</kbd></span><span>pause</span></div>
+      </section>
+    </div>
+    <button id="play">Play</button>
+    <p class="small resume-only">Paused. Click Play to carry on.</p>
+    <p class="small">Your progress and builds are kept in this browser. Best on a computer with a keyboard and mouse.</p>
+  </div>
+</div>
+
+<div id="panel" hidden></div>
+<div id="chat" hidden></div>
+<div id="toast"></div>
+<div id="notice" hidden></div>
+<noscript>crystalminer needs JavaScript and WebGL.</noscript>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
