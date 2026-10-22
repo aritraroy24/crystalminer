@@ -95,7 +95,8 @@ function T.tutor_system_prompt()
 	for _, l in ipairs(content.intro) do lines[#lines + 1] = "- " .. l end
 	lines[#lines + 1] = ""
 	lines[#lines + 1] = "Museum navigation:"
-	lines[#lines + 1] = "- The foyer is the starting area and contains the welcome board and information desk."
+	lines[#lines + 1] = "- The foyer is the starting area and contains the welcome board."
+	lines[#lines + 1] = "- Visitor information is east of the foyer and contains the information desk."
 	lines[#lines + 1] = "- The Workshop is west of the foyer and contains the Try-it Pad."
 	lines[#lines + 1] = "- Gallery 1 is north of the foyer and teaches translation, rotation, reflection and inversion."
 	lines[#lines + 1] = "- Beyond Gallery 1 are Gallery 2, the history of crystallography, and Gallery 3, crystals at the atomic scale."

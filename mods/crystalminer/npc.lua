@@ -6,7 +6,7 @@ local VISITOR_POSITIONS = {
 	{ x = -12, y = cm.GROUND_Y + 1, z = -40,
 		message = "The Workshop is west of here. Try the Try-it Pad before you visit the galleries." },
 	{ x = 10, y = cm.GROUND_Y + 1, z = -20,
-		message = "Gallery 1 is through the north door. Work out which operation made each copy, then try the quiz." },
+		message = "This is Gallery 1. Work out which operation made each copy, then try the quiz." },
 	{ x = -30, y = cm.GROUND_Y + 1, z = -40,
 		message = "The Workshop has four levers: slide, turn, mirror and send a shape through its centre." },
 	{ x = 30, y = cm.GROUND_Y + 1, z = -40,
