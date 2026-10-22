@@ -37,6 +37,15 @@ Introduction (tier 0):
 - Start in the foyer (type /spawn to go there): read the big board, then walk through the door into Gallery 1.
 - Walk with W A S D, look with the mouse. Press T to type a command, such as /tour for a ten-minute guided tour.
 
+Museum navigation:
+- The foyer is the starting area and contains the welcome board.
+- Visitor information is east of the foyer and contains the information desk.
+- The Workshop is west of the foyer and contains the Try-it Pad.
+- Gallery 1 is north of the foyer and teaches translation, rotation, reflection and inversion.
+- Beyond Gallery 1 are Gallery 2, the history of crystallography, and Gallery 3, crystals at the atomic scale.
+- The Portal Hall is furthest north and contains a portal to each symmetry world.
+- The /quiz command unlocks tiers; /tour starts a guided tour; /guide lists commands; /spawn returns to the foyer.
+
 Region: Mirror Plaza (tier 1, symmetry m)
   Tier 1:
   - A mirror plane (m) runs through the middle of this plaza, north to south.

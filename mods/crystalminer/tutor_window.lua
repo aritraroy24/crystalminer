@@ -208,7 +208,7 @@ function cm.tutor_ask(name, text)
 	show(name)
 	if cm.billboard_asked then cm.billboard_asked(text) end
 	local place = place_of(name)
-	T.send(tutor.http, tutor.cfg, T.chat_request(tutor.cfg, history, text, cm.progress(name).tier, place),
+	T.send_chat(tutor.http, tutor.cfg, history, text, cm.progress(name).tier, place,
 		core.write_json, core.parse_json, function(answer, err)
 			T.finish(tutor.limits, name)
 			c.waiting = false

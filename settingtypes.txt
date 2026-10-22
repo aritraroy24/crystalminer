@@ -16,11 +16,18 @@ crystalminer.anthropic_api_key (Tutor: Anthropic API key) string
 # Address of the API, up to and including /v1, when it is not the provider's usual one: for openai_compatible, hosted_vllm, a proxy, or a server elsewhere. Ollama on this computer: http://localhost:11434/v1
 crystalminer.tutor_base_url (Tutor: base URL) string http://localhost:11434/v1
 
-# API key for the model's provider, sent as "Authorization: Bearer <key>". When empty, the provider's own variable (DEEPSEEK_API_KEY, OPENAI_API_KEY, ...) and then CRYSTALMINER_TUTOR_API_KEY are used. Leave it empty for a local server such as Ollama.
+# API key for the model's provider, sent as "Authorization: Bearer <key>". When empty, the provider's own variable (DEEPSEEK_API_KEY, OPENAI_API_KEY, ...) and then CRYSTALMINER_TUTOR_API_KEY are used. Leave it empty for a local server such as Ollama. For anthropic/... models the Anthropic API key above and ANTHROPIC_API_KEY come first.
 crystalminer.tutor_api_key (Tutor: API key) string
 
 # OpenAI-compatible provider: seconds to wait for an answer. Local models on a slow CPU may need more.
 crystalminer.tutor_timeout (Tutor: timeout in seconds) int 60 5 600
+
+# Materials Project MPContribs key for teacher-created live exhibits. The key is never shown or logged.
+# The server must also list crystalminer in secure.http_mods. CRYSTALMINER_MP_API_KEY is used when empty.
+crystalminer.mp_api_key (Live exhibit API key) string
+
+# MPContribs API base URL for live exhibits.
+crystalminer.mp_api_url (Live exhibit API URL) string https://contribs-api.materialsproject.org
 
 # OpenAI-compatible provider: longest answer in tokens. When not set, /ask uses 400 and /symmetry 200.
 # Models that think before answering need more, for example 2000; a cut-off answer is not shown.
