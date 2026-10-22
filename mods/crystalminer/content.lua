@@ -303,6 +303,41 @@ return {
 			},
 		},
 	},
+	-- Prism, the AI tutor at the information desk (tutor_window.lua). The model's answers are grounded in this file (tutor.lua); the words of the window itself are here.
+	tutor = {
+		name = "Prism",
+		role = "the crystal tutor",
+		welcome = "Hi %s! I'm **Prism**. Ask me anything about symmetry, crystals or this museum: "
+			.. "what a mirror plane is, why no crystal has a fivefold axis, how a screw axis works. "
+			.. "Pick a question below or type your own.",
+		about = "Ask me about symmetry, crystals and this museum. I remember our chat until you start a new one.",
+		disclaimer = "I answer from the museum's own lesson text, but I can still be wrong. If something "
+			.. "looks odd, check it in the game or ask your teacher.",
+		off = "I'm asleep: the AI tutor isn't set up on this server yet. Teachers: see \"The AI tutor\" in the README.",
+		thinking = "Prism is thinking...",
+		-- Suggested questions, by tier, each at most 23 characters to fit its button; in a world the first is replaced by one about that world.
+		here = "Explain this world",
+		suggestions = {
+			[0] = { "What is symmetry?", "Mirror or inversion?", "Why do crystals repeat?" },
+			[1] = { "What is a twofold axis?", "What is inversion?", "What is a lattice?" },
+			[2] = { "How do mirrors combine?", "What does 2/m mean?", "What is a point group?" },
+			[3] = { "Why no fivefold axis?", "What is rotoinversion?", "Why 48 copies in m-3m?" },
+			[4] = { "What is a screw axis?", "Glide plane vs mirror?", "What is a space group?" },
+		},
+		desk = "# ASK PRISM, THE AI TUTOR\nRight-click the screen, or type /ask anywhere",
+		-- The pixel billboard on the east wall of Visitor information (billboard.lua). It shows the latest question to everyone in the room, so it never shows who asked.
+		board = {
+			title = "PRISM · LIVE",
+			hint = "right-click me or type /ask",
+			welcome = "Hi! I'm **Prism**, the crystal tutor of this museum. Ask me anything about symmetry and crystals.",
+			how = "Right-click this screen or the screen on the desk, or type /ask anywhere. The latest question and my answer appear here.",
+			fact_title = "WORDS TO KNOW",
+			asked = "A VISITOR ASKED:",
+			answer = "PRISM:",
+			thinking = "thinking...",
+			more = "... the rest is in the chat: right-click me or type /ask",
+		},
+	},
 	-- The Museum of Crystals and Symmetry: the lobby where everyone starts (after the central hall
 	-- of MolCraft). Rooms and their positions are in lobby.lua; the words on every sign are here.
 	-- In sign texts, a line starting with "# " is a heading.
@@ -311,7 +346,7 @@ return {
 		welcome = "# Museum of Crystals and Symmetry\n"
 			.. "Crystals are atoms arranged in patterns that repeat. Symmetry is the language that describes those patterns, "
 			.. "and this museum teaches it by letting you build with it.\n\n"
-			.. "West: the Workshop, with the Try-it Pad.   East: Visitor information.\n"
+			.. "West: the Workshop, with the Try-it Pad.   East: Visitor information, with Prism, the AI tutor.\n"
 			.. "North: Gallery 1, Four kinds of symmetry. Beyond it, Gallery 2, A history of crystallography, "
 			.. "and Gallery 3, Crystals at the atomic scale.\n"
 			.. "Furthest north: the Portal Hall, with a portal to every symmetry world.\n\n"

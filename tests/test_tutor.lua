@@ -441,4 +441,75 @@ T.run("limits are unchanged for both providers", function()
 	T.eq(cfg.timeout, 5)
 end)
 
+T.run("deepseek preset: hosted URL, model and the DEEPSEEK_API_KEY variable", function()
+	local env = function(k) return ({ DEEPSEEK_API_KEY = "ds-env", CRYSTALMINER_TUTOR_API_KEY = "other" })[k] end
+	-- The base URL setting's default (Ollama) is what Luanti hands back when it was never changed.
+	local cfg, off = Tutor.config(settings({ ["crystalminer.tutor_provider"] = "deepseek",
+		["crystalminer.tutor_base_url"] = Tutor.DEFAULT_BASE_URL }), env)
+	T.eq(off, nil)
+	T.eq(cfg.provider, "openai_compatible"); T.eq(cfg.service, "DeepSeek")
+	T.eq(cfg.url, "https://api.deepseek.com/chat/completions"); T.eq(cfg.model, "deepseek-flash")
+	T.eq(cfg.api_key, "ds-env")
+	T.ok(not Tutor.describe(cfg):find("ds-env", 1, true), "the key must never be logged")
+	T.ok(Tutor.describe(cfg):find("deepseek", 1, true))
+	-- The settings win over the preset.
+	cfg = Tutor.config(settings({ ["crystalminer.tutor_provider"] = "deepseek", ["crystalminer.tutor_model"] = "deepseek-v4-pro",
+		["crystalminer.tutor_api_key"] = "ds-set", ["crystalminer.tutor_base_url"] = "https://proxy.example/v1" }), env)
+	T.eq(cfg.model, "deepseek-v4-pro"); T.eq(cfg.api_key, "ds-set"); T.eq(cfg.url, "https://proxy.example/v1/chat/completions")
+	-- Without a key the tutor stays off and says why.
+	cfg, off = Tutor.config(settings({ ["crystalminer.tutor_provider"] = "deepseek" }), no_env)
+	T.ok(off and off:find("DEEPSEEK_API_KEY"), off)
+end)
+
+T.run("chat request: answered turns only, alternating, the newest last, with the chat prompt", function()
+	local cfg = Tutor.config(settings(OC), no_env)
+	local history = {
+		{ role = "user", text = "What is a mirror?" }, { role = "assistant", text = "A reflection." },
+		{ role = "user", text = "Lost question" }, { role = "error", text = "The tutor could not be reached." },
+		{ role = "user", text = "And inversion?" }, { role = "assistant", text = "Through a point." },
+	}
+	local b = Tutor.chat_request(cfg, history, "Which is in m-3m?", 3, "Kaleidoscope")
+	T.eq(b.model, "llama3.2"); T.eq(b.max_tokens, Tutor.CHAT_TOKENS)
+	T.eq(#b.messages, 6)
+	T.eq(b.messages[1].role, "system"); T.eq(b.messages[1].content, Tutor.chat_system_prompt())
+	local roles = {}
+	for i = 2, #b.messages do roles[#roles + 1] = b.messages[i].role end
+	T.eq(table.concat(roles, " "), "user assistant user assistant user")
+	T.eq(b.messages[4].content, "And inversion?")
+	T.eq(b.messages[6].content, "Student tier: 3\nStudent is in: Kaleidoscope\nQuestion: Which is in m-3m?")
+	-- Claude gets the same turns in its own format.
+	local a = Tutor.chat_request({ provider = "anthropic" }, history, "Which is in m-3m?", 3, nil)
+	T.eq(#a.messages, 5); T.eq(a.messages[1].role, "user"); T.eq(a.system[1].text, Tutor.chat_system_prompt())
+	T.ok(a.messages[5].content:find("Student is in: the museum", 1, true))
+	-- A long conversation sends only the last T.CHAT_HISTORY messages, starting with a question.
+	local long = {}
+	for i = 1, 20 do
+		long[#long + 1] = { role = "user", text = "q" .. i }
+		long[#long + 1] = { role = "assistant", text = "a" .. i }
+	end
+	b = Tutor.chat_request(cfg, long, "last", 0, nil)
+	T.eq(#b.messages, Tutor.CHAT_HISTORY + 2)
+	T.eq(b.messages[2].role, "user"); T.eq(b.messages[2].content, "q" .. (20 - Tutor.CHAT_HISTORY / 2 + 1))
+end)
+
+T.run("chat prompt: the museum's galleries, the same rules, no hidden answer", function()
+	local p = Tutor.chat_system_prompt()
+	T.ok(p:find(content.tutor.name, 1, true))
+	T.ok(p:find("Use only the reference below", 1, true))
+	T.ok(p:find("Do not give away quiz answers", 1, true))
+	T.ok(p:find(content.museum.exhibits[1].facts[1], 1, true), "museum facts")
+	T.ok(p:find(content.lobby.history[1].who, 1, true), "history")
+	for _, a in ipairs(content.regions) do
+		if a.hidden then T.ok(not p:find(a.hidden, 1, true), "hidden answer leaked: " .. a.hidden) end
+	end
+end)
+
+T.run("a limiter can have a shorter wait between questions", function()
+	local lim = Tutor.new_limiter(5)
+	T.ok(Tutor.try_start(lim, "ann", 100)); Tutor.finish(lim, "ann")
+	local ok, msg = Tutor.try_start(lim, "ann", 102)
+	T.ok(not ok and msg:find("3 s"), msg)
+	T.ok(Tutor.try_start(lim, "ann", 105))
+end)
+
 T.finish()

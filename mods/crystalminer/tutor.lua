@@ -36,8 +36,9 @@ function T.check_length(text)
 	return nil
 end
 
-function T.new_limiter()
-	return { last = {}, busy = {}, in_flight = 0 }
+--- cooldown: seconds between requests from one player (default T.COOLDOWN).
+function T.new_limiter(cooldown)
+	return { last = {}, busy = {}, in_flight = 0, cooldown = cooldown }
 end
 
 --- Reserves a request slot for a player. now is in seconds.
@@ -47,8 +48,9 @@ function T.try_start(lim, name, now)
 		return false, "The tutor is still thinking about your last question."
 	end
 	local last = lim.last[name]
-	if last and now - last < T.COOLDOWN then
-		local wait = math.ceil(T.COOLDOWN - (now - last))
+	local cooldown = lim.cooldown or T.COOLDOWN
+	if last and now - last < cooldown then
+		local wait = math.ceil(cooldown - (now - last))
 		return false, "Give the tutor a moment: you can ask again in " .. wait .. " s."
 	end
 	if lim.in_flight >= T.MAX_IN_FLIGHT then
@@ -68,27 +70,21 @@ function T.finish(lim, name)
 	end
 end
 
-function T.tutor_system_prompt()
-	local lines = {
-		"You are the tutor inside crystalminer, a Luanti world where students learn symmetry, the "
-			.. "foundation of crystallography. Each region of the world has a symmetry group: whatever a "
-			.. "student builds there is copied by every operation of the group.",
-		"",
-		"How to answer:",
-		"- Use only the reference below. If it does not cover the question, say you are not sure and "
-			.. "suggest asking their teacher. Never guess or invent facts.",
-		"- Reply in plain text for game chat: no markdown, no bullet symbols, at most 80 words.",
-		"- Pitch the answer at the student's tier. Ideas from a higher tier than theirs can be mentioned "
-			.. "as something they will meet later, without explaining them in full.",
-		"- Do not give away quiz answers or the hidden symmetry of the Mystery Lab. Give a hint about what "
-			.. "to build or look for instead.",
-		"- If the question is not about symmetry, crystals or this world, say briefly that you can only "
-			.. "help with those.",
-		"",
-		"REFERENCE",
-		"",
-		"Glossary:",
-	}
+local INTRO = "You are the tutor inside crystalminer, a Luanti world where students learn symmetry, the "
+	.. "foundation of crystallography. Each region of the world has a symmetry group: whatever a "
+	.. "student builds there is copied by every operation of the group."
+local RULE_TIER = "- Pitch the answer at the student's tier. Ideas from a higher tier than theirs can be mentioned "
+	.. "as something they will meet later, without explaining them in full."
+local RULE_QUIZ = "- Do not give away quiz answers or the hidden symmetry of the Mystery Lab. Give a hint about what "
+	.. "to build or look for instead."
+local RULE_TOPIC = "- If the question is not about symmetry, crystals or this world, say briefly that you can only "
+	.. "help with those."
+
+--- The reviewed lesson text both prompts answer from, appended to lines.
+local function add_reference(lines)
+	lines[#lines + 1] = "REFERENCE"
+	lines[#lines + 1] = ""
+	lines[#lines + 1] = "Glossary:"
 	for _, g in ipairs(content.glossary) do lines[#lines + 1] = "- " .. g end
 	lines[#lines + 1] = ""
 	lines[#lines + 1] = "Introduction (tier 0):"
@@ -104,6 +100,64 @@ function T.tutor_system_prompt()
 			lines[#lines + 1] = "  Tier " .. t .. ":"
 			for _, l in ipairs(a.explain[t]) do lines[#lines + 1] = "  - " .. l end
 		end
+	end
+	return lines
+end
+
+function T.tutor_system_prompt()
+	local lines = {
+		INTRO,
+		"",
+		"How to answer:",
+		"- Use only the reference below. If it does not cover the question, say you are not sure and "
+			.. "suggest asking their teacher. Never guess or invent facts.",
+		"- Reply in plain text for game chat: no markdown, no bullet symbols, at most 80 words.",
+		RULE_TIER,
+		RULE_QUIZ,
+		RULE_TOPIC,
+		"",
+	}
+	return table.concat(add_reference(lines), "\n")
+end
+
+--- System prompt for the chat window (tutor_window.lua): a conversation with Prism, the tutor at the museum's information desk. The same grounding rules as /ask, a little more room to explain, and the museum's galleries (history, crystal structures) in the reference as well.
+function T.chat_system_prompt()
+	local name = content.tutor and content.tutor.name or "the tutor"
+	local lines = {
+		INTRO,
+		"",
+		"You are " .. name .. ", a friendly crystal who answers students' questions at the information "
+			.. "desk of the Museum of Crystals and Symmetry. This is a conversation: earlier messages are "
+			.. "the same student's, so build on them.",
+		"",
+		"How to answer:",
+		"- Use only the reference below. If it does not cover the question, say you are not sure and "
+			.. "suggest asking their teacher. Never guess or invent facts.",
+		"- Plain text, at most 120 words. You may use **bold** for a key word; no other markdown, no "
+			.. "headings, no tables. Short paragraphs.",
+		"- Explain with things the student can do or see in the game when you can: a world to visit, "
+			.. "something to build, a command such as /step or /whatsymmetry.",
+		RULE_TIER,
+		RULE_QUIZ,
+		RULE_TOPIC,
+		"",
+	}
+	add_reference(lines)
+	local m = content.museum
+	if m then
+		lines[#lines + 1] = ""
+		lines[#lines + 1] = "Gallery 3, " .. m.name .. ":"
+		for _, l in ipairs(m.intro or {}) do lines[#lines + 1] = "- " .. l end
+		for _, e in ipairs(m.exhibits or {}) do
+			lines[#lines + 1] = "  " .. (e.label or e.name) .. ":"
+			for _, f in ipairs(e.facts or {}) do lines[#lines + 1] = "  - " .. f end
+		end
+	end
+	local history = content.lobby and content.lobby.history
+	if history then
+		lines[#lines + 1] = ""
+		lines[#lines + 1] = "Gallery 2, a history of crystallography:"
+		for _, h in ipairs(history) do lines[#lines + 1] = "- " .. h.year .. ", " .. h.who .. ": " .. h.text end
 	end
 	return table.concat(lines, "\n")
 end
@@ -252,6 +306,9 @@ end
 -- grounding rules are the same.
 
 T.DEFAULT_BASE_URL = "http://localhost:11434/v1" -- Ollama's OpenAI-compatible endpoint
+-- "deepseek" is a preset of openai_compatible: DeepSeek's hosted API, checked in October 2026 (GET /models lists deepseek-flash, DeepSeek-V4.1-Flash, and deepseek-v4-pro).
+--   https://api-docs.deepseek.com/
+T.DEEPSEEK = { base_url = "https://api.deepseek.com", model = "deepseek-flash", env = "DEEPSEEK_API_KEY" }
 T.ANTHROPIC_TIMEOUT = 90
 T.OPENAI_TIMEOUT = 60          -- seconds; crystalminer.tutor_timeout changes it
 T.OPENAI_TEMPERATURE = 0.2
@@ -285,22 +342,29 @@ function T.config(get, getenv)
 		if key == nil or key == "" then return cfg, "no API key set" end
 		return cfg
 	end
-	if provider ~= "openai_compatible" then
-		return nil, "unknown crystalminer.tutor_provider '" .. provider .. "' (use anthropic or openai_compatible)"
+	if provider ~= "openai_compatible" and provider ~= "deepseek" then
+		return nil, "unknown crystalminer.tutor_provider '" .. provider
+			.. "' (use anthropic, deepseek or openai_compatible)"
 	end
+	local preset = provider == "deepseek" and T.DEEPSEEK or nil
 	local base = trim(get("crystalminer.tutor_base_url"))
-	if base == "" then base = T.DEFAULT_BASE_URL end
+	-- The base URL setting has a default for Ollama, which the DeepSeek preset replaces.
+	if base == "" or (preset and base == T.DEFAULT_BASE_URL) then base = preset and preset.base_url or T.DEFAULT_BASE_URL end
 	base = base:gsub("/+$", "")
 	local key = trim(get("crystalminer.tutor_api_key"))
+	if key == "" and preset then key = trim(getenv(preset.env)) end
 	if key == "" then key = trim(getenv("CRYSTALMINER_TUTOR_API_KEY")) end
 	local timeout = math.floor(tonumber(get("crystalminer.tutor_timeout")) or T.OPENAI_TIMEOUT)
 	local max_tokens = tonumber(get("crystalminer.tutor_max_tokens"))
 	if max_tokens then max_tokens = math.max(16, math.min(T.MAX_TOKENS, math.floor(max_tokens))) end
+	local model = trim(get("crystalminer.tutor_model"))
+	if model == "" and preset then model = preset.model end
 	local cfg = {
 		provider = "openai_compatible",
+		service = preset and "DeepSeek" or nil,
 		base_url = base,
 		url = base .. "/chat/completions",
-		model = trim(get("crystalminer.tutor_model")),
+		model = model,
 		api_key = key ~= "" and key or nil,
 		timeout = math.max(5, math.min(600, timeout)),
 		ask_tokens = max_tokens or T.OPENAI_ASK_TOKENS,
@@ -310,6 +374,7 @@ function T.config(get, getenv)
 		return cfg, "crystalminer.tutor_base_url must start with http:// or https://"
 	end
 	if cfg.model == "" then return cfg, "set crystalminer.tutor_model to the name of the model" end
+	if preset and key == "" then return cfg, "no DeepSeek API key set (" .. preset.env .. " or crystalminer.tutor_api_key)" end
 	if key:find("%c") then return cfg, "the tutor API key contains control characters" end
 	return cfg
 end
@@ -320,7 +385,7 @@ function T.describe(cfg)
 		return "provider anthropic, url " .. cfg.url .. ", model " .. cfg.model
 	end
 	local url = cfg.base_url:gsub("//[^/@]*@", "//***@")
-	return "provider openai_compatible, base_url " .. url .. ", model "
+	return "provider " .. (cfg.service and cfg.service:lower() .. " (openai_compatible)" or "openai_compatible") .. ", base_url " .. url .. ", model "
 		.. (cfg.model ~= "" and cfg.model or "(not set)") .. ", API key " .. (cfg.api_key and "set" or "not set")
 end
 
@@ -344,6 +409,35 @@ function T.ask_request(cfg, question, tier, region_name)
 	local a = T.ask_body(question, tier, region_name)
 	if cfg.provider ~= "openai_compatible" then return a end
 	return openai_body(cfg, a.system[1].text, a.messages[1].content, cfg.ask_tokens)
+end
+
+T.CHAT_HISTORY = 12   -- earlier messages (user and tutor) sent with each chat question
+T.CHAT_TOKENS = 1500  -- chat answers with an OpenAI-compatible model: room for a thinking model
+
+--- Request body for one question in the chat window. history: earlier messages of this conversation, oldest first, { role = "user" | "assistant" | anything else, text = ... }. Only questions that were answered are sent, each with its answer, so turns alternate; at most the last T.CHAT_HISTORY messages.
+function T.chat_request(cfg, history, question, tier, place)
+	local pairs_ = {}
+	history = history or {}
+	for i = 1, #history - 1 do
+		local q, a = history[i], history[i + 1]
+		if q.role == "user" and a.role == "assistant" then
+			pairs_[#pairs_ + 1] = { role = "user", content = q.text }
+			pairs_[#pairs_ + 1] = { role = "assistant", content = a.text }
+		end
+	end
+	local msgs = {}
+	for i = math.max(1, #pairs_ - T.CHAT_HISTORY + 1), #pairs_ do msgs[#msgs + 1] = pairs_[i] end
+	msgs[#msgs + 1] = { role = "user", content = "Student tier: " .. tier .. "\nStudent is in: "
+		.. (place or "the museum") .. "\nQuestion: " .. question }
+	local system = T.chat_system_prompt()
+	if cfg.provider ~= "openai_compatible" then
+		local b = base(system, "")
+		b.messages = msgs
+		return b
+	end
+	table.insert(msgs, 1, { role = "system", content = system })
+	return { model = cfg.model, messages = msgs, max_tokens = math.max(cfg.ask_tokens or 0, T.CHAT_TOKENS),
+		temperature = T.OPENAI_TEMPERATURE }
 end
 
 --- Request body for /symmetry. mode (openai_compatible only) is one of T.RESPONSE_FORMATS.

@@ -1,9 +1,10 @@
 # Which AI service runs the in-game tutor (/ask and /symmetry with a description).
 # anthropic: the Claude API, paid per request (needs the Anthropic API key below).
+# deepseek: DeepSeek's hosted API (model deepseek-flash unless the model name below is set). The key is the environment variable DEEPSEEK_API_KEY, or the API key for OpenAI-compatible services below.
 # openai_compatible: any server with an OpenAI-style Chat Completions API, for example Ollama
 # running a free open-source model on this computer (set the base URL and model name below).
 # Either way the server must also list crystalminer in secure.http_mods.
-crystalminer.tutor_provider (Tutor: provider) enum anthropic anthropic,openai_compatible
+crystalminer.tutor_provider (Tutor: provider) enum anthropic anthropic,deepseek,openai_compatible
 
 # Anthropic API key for the tutor, used when the provider is anthropic.
 # Paid per request through the Claude API.

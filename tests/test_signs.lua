@@ -23,10 +23,10 @@ local function all_signs()
 	-- Banners over the doorways (lobby.lua) and the information desk (furniture.lua).
 	for _, b in ipairs({
 		"# MUSEUM OF CRYSTALS AND SYMMETRY\nWelcome. The doors open with a click.",
-		"# GALLERY 1\nFour kinds of symmetry", "# WORKSHOP\nThe Try-it Pad", "# VISITOR INFORMATION\nHow to explore",
+		"# GALLERY 1\nFour kinds of symmetry", "# WORKSHOP\nThe Try-it Pad", "# VISITOR INFORMATION\nHow to explore · Ask Prism, the AI tutor",
 		"# GALLERY 2\nA history of crystallography", "# GALLERY 3\nCrystals at the atomic scale",
 		"# FOYER\nWay out, welcome and map", "# PORTAL HALL\nTo the symmetry worlds",
-		"# INFORMATION\nAsk, read, and take the tour: /tour",
+		content.tutor.desk,
 	}) do add("banner", b, "banner " .. b:match("^# ([^\n]*)")) end
 	for _, k in ipairs({ "welcome", "information", "workshop", "gallery1", "gallery2", "gallery3", "portals" }) do
 		add("board", LB[k], k)
