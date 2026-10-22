@@ -175,8 +175,8 @@ symmetry puzzles in Gallery 1.
 
 Museum NPCs: a blue information-desk character in Visitor information answers common questions and
 can pass a typed question to the tutor (when the tutor is set up; the same limits as `/ask` apply),
-and eight orange visitors stroll around the foyer, the Workshop and the galleries and give a tip
-when right-clicked.
+and eight orange visitors stroll around the foyer, the Workshop, Visitor information and the
+galleries and give a tip when right-clicked.
 
 ### The worlds
 
