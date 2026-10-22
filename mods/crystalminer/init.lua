@@ -19,7 +19,7 @@ local GROUND_Y = 0
 local SPAWN = content.lobby.spawn
 local LABEL_RANGE = 30
 
-crystalminer = { S = S, L = L, G = G, content = content, storage = storage }
+crystalminer = { S = S, L = L, G = G, content = content, storage = storage, http = http }
 local cm = crystalminer
 dofile(modpath .. "/sounds.lua") -- before the nodes: they take their sounds from cm.node_sounds
 
@@ -963,7 +963,8 @@ core.register_globalstep(function(dtime)
 			end
 			update_labels(player)
 			-- Sends packets only when what the player should see changed.
-			sync_markers(name, region_near(player:get_pos()))
+			local pos = player:get_pos()
+			sync_markers(name, region_near(pos) or (crystalminer.exhibit_live_at and crystalminer.exhibit_live_at(pos)))
 		end
 	end
 end)
@@ -1762,6 +1763,8 @@ dofile(modpath .. "/next_hint.lua")
 dofile(modpath .. "/learning.lua")
 dofile(modpath .. "/modes.lua")
 dofile(modpath .. "/museum.lua")
+dofile(modpath .. "/exhibits.lua")
+dofile(modpath .. "/exhibit_dynamic.lua")
 dofile(modpath .. "/tour.lua")
 dofile(modpath .. "/furniture.lua")
 
