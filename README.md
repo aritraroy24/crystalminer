@@ -124,9 +124,11 @@ structure-name list, then requests only the selected structure ids; no student d
 Each room load permits at most 30 filtered-list requests and 60 structure requests, with a
 20-second request timeout and a 60-second overall budget; at most two room loads run at once.
 
-Some exhibit files are generated and not committed: the baked sample structures, the element
-colour table, 96 atom textures and the atom mesh. After cloning, run `sh tools/make_exhibit_assets.sh`
-(Python 3, standard library only) before starting the game or the tests.
+Some exhibit files are generated, but they are committed, so a fresh clone works as it is: the
+baked sample structures, the element colour table, 96 atom textures, the atom mesh and the unit-test
+fixtures. Run `sh tools/make_exhibit_assets.sh` (Python 3, standard library only) only after changing
+its inputs (`data/mpcontribs/*.json`, `mods/crystalminer/exhibit_elements.lua` or the generator
+scripts), and commit the regenerated files.
 
 ### The museum
 

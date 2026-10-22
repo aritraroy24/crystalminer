@@ -37,10 +37,6 @@ jobs:
           chmod +x "$RUNNER_TEMP/bin/luajit"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
-      # The crystal exhibits need files that are generated from data/mpcontribs and the tools.
-      - name: Generate exhibit assets
-        run: sh tools/make_exhibit_assets.sh
-
       - name: Unit tests
         run: |
           luajit -v
