@@ -371,6 +371,25 @@ local function run()
 		if here ~= "air" or above ~= "air" then blocked[#blocked + 1] = core.pos_to_string(p) .. " " .. here .. "/" .. above end
 	end
 	check("NPCs: every NPC stands in free space, not inside furniture", #blocked == 0, table.concat(blocked, ", "))
+	-- The desk NPC opens Prism's chat, the one window for questions; /ask does too, and /ask <question> asks there.
+	do
+		local saved_open, opened = cm.open_tutor, {}
+		cm.open_tutor = function(n, q) opened[#opened + 1] = { n, q } end
+		local desk_npc
+		for _, e in pairs(core.luaentities) do
+			if e.name == "crystalminer:guide_npc" and e.object:get_pos() then desk_npc = e end
+		end
+		local fake = { is_player = function() return true end, get_player_name = function() return "desker" end }
+		if desk_npc then desk_npc:on_rightclick(fake) end
+		check("NPCs: the desk NPC opens Prism's chat", #opened == 1 and opened[1][1] == "desker" and opened[1][2] == nil,
+			tostring(#opened))
+		local ask = core.registered_chatcommands.ask
+		local ok1 = ask.func("asker", "")
+		local ok2 = ask.func("asker", "  What is a mirror?  ")
+		check("/ask opens Prism's chat; /ask <question> asks there", ok1 and ok2 and #opened == 3
+			and opened[2][2] == "" and opened[3][2] == "What is a mirror?", tostring(#opened))
+		cm.open_tutor = saved_open
+	end
 	-- Guides: a first arrival marks the place as guided (the window opens a moment later), and the
 	-- window carries the steps; the Try-it Pad has its labels.
 	for _, f in ipairs(cm.on_area) do f("guidetester", "fourfold_tower", live("fourfold_tower")) end

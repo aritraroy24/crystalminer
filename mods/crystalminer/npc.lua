@@ -21,7 +21,7 @@ local VISITOR_POSITIONS = {
 	{ x = 35, y = cm.GROUND_Y + 1, z = 10,
 		message = "After Gallery 2, visit Gallery 3 to see crystal models, then continue north to the Portal Hall." },
 }
-local NPC_FORMSPEC = "crystalminer:npc"
+local DESK_GREETING = "I can help you find your way around the museum. Ask Prism, the AI tutor, anything."
 local VISITOR_WANDER_RADIUS = 3
 local VISITOR_WALK_SPEED = 0.6
 -- The NPCs are not saved in the map (static_save = false): they exist only while a player is near
@@ -66,19 +66,12 @@ core.register_entity(INFO_NAME, {
 		-- One saved in the map by an earlier version: remove it (this file adds the current one).
 		if not spawning then self.object:remove() end
 	end,
+	-- The desk NPC greets the visitor and opens Prism's chat (tutor_window.lua), the one window for questions.
 	on_rightclick = function(self, clicker)
 		if not clicker or not clicker:is_player() then return end
-		core.show_formspec(clicker:get_player_name(), NPC_FORMSPEC,
-			"formspec_version[4]size[11,7]" ..
-			"label[0.6,0.5;Information desk]" ..
-			"label[0.6,1.0;I can help you find your way around the museum.]" ..
-			"button[0.6,1.6;4.6,0.8;welcome;What should I do first?]" ..
-			"button[5.5,1.6;4.8,0.8;galleries;Where are the galleries?]" ..
-			"button[0.6,2.6;4.6,0.8;workshop;What is the Workshop?]" ..
-			"button[5.5,2.6;4.8,0.8;next;What should I do next?]" ..
-			"field[0.8,4.3;9.8,0.8;question;Ask a question;]" ..
-			"button[3.2,5.3;4.6,0.8;ask;Ask the tutor]" ..
-			"button_exit[3.2,6.2;4.6,0.6;close;Close]")
+		local name = clicker:get_player_name()
+		core.chat_send_player(name, "[Information desk]: " .. DESK_GREETING)
+		cm.open_tutor(name)
 	end,
 })
 
@@ -193,29 +186,4 @@ core.register_globalstep(function(dtime)
 	if npc_timer < 2 then return end
 	npc_timer = 0
 	ensure_npcs()
-end)
-
-core.register_on_player_receive_fields(function(player, formname, fields)
-	if formname ~= NPC_FORMSPEC or fields.quit then return end
-	local name = player:get_player_name()
-	local quick = {
-		welcome = "I am at the information desk. Start with the welcome board, then visit the Workshop or Gallery 1.",
-		galleries = "The Workshop is west. Gallery 1 is north. Beyond it are Gallery 2, Gallery 3 and the Portal Hall.",
-		workshop = "In the Workshop, place blocks in the glass box and use the levers to try translations, rotations, mirrors and inversions.",
-		next = "Press I for your progress board, or type /tour for a guided tour. The /quiz command unlocks the next tier.",
-	}
-	for button, message in pairs(quick) do
-		if fields[button] then
-			core.chat_send_player(name, "[Information desk]: " .. message)
-			return
-		end
-	end
-	if fields.ask then
-		local question = (fields.question or ""):trim()
-		local ok, err = cm.ask_tutor(name, question,
-			"You asked the information desk: " .. question)
-		if not ok then
-			core.chat_send_player(name, "[Information desk]: " .. err)
-		end
-	end
 end)

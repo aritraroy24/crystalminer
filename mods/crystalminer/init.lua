@@ -1664,26 +1664,6 @@ if not tutor_on then
 	core.log("action", "[crystalminer] Tutor off: " .. (http and tutor_off or "add crystalminer to secure.http_mods"))
 end
 
-local function ask_tutor(name, param, source)
-	if not tutor_on then return false, "The tutor is not set up on this server. See the README." end
-	param = param:trim()
-	if param == "" then return false, "Please type a question first." end
-	local too_long = Tutor.check_length(param)
-	if too_long then return false, too_long end
-	local ok, busy = Tutor.try_start(tutor_limits, name, now_s())
-	if not ok then return false, busy end
-	local player = core.get_player_by_name(name)
-	local live = player and region_near(player:get_pos())
-	if source then say(name, source, "#A0A0A0") end
-	Tutor.send(http, tutor_cfg, Tutor.ask_request(tutor_cfg, param, progress(name).tier, live and live.area.name),
-		core.write_json, core.parse_json, function(text, err)
-			Tutor.finish(tutor_limits, name)
-			say(name, core.colorize("#D080FF", "Tutor: ") .. (text and Tutor.strip_label(text) or err))
-		end)
-	return true
-end
-cm.ask_tutor = ask_tutor
-
 cmd("symmetry", {
 	params = "<description>",
 	description = "Give the Free Lab a symmetry, e.g. /symmetry a fourfold axis with mirrors",
