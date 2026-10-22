@@ -3,7 +3,8 @@ local INFO_NAME = "crystalminer:guide_npc"
 local INFO_POS = { x = 28, y = cm.GROUND_Y + 1, z = -40 }
 local VISITOR_NAME = "crystalminer:museum_visitor"
 local VISITOR_POSITIONS = {
-	{ x = -12, y = cm.GROUND_Y + 1, z = -40,
+	-- Not at x = -12, z = -40: that is the middle of the fluorite sculpture's plinth (sculptures.lua).
+	{ x = -6, y = cm.GROUND_Y + 1, z = -45,
 		message = "The Workshop is west of here. Try the Try-it Pad before you visit the galleries." },
 	{ x = 10, y = cm.GROUND_Y + 1, z = -20,
 		message = "This is Gallery 1. Work out which operation made each copy, then try the quiz." },
@@ -179,6 +180,8 @@ local function ensure_npcs(always)
 	end
 end
 cm.npc_refresh = ensure_npcs
+cm.npc_places = { INFO_POS }
+for _, visitor in ipairs(VISITOR_POSITIONS) do cm.npc_places[#cm.npc_places + 1] = visitor end
 
 table.insert(cm.on_clear, remove_npcs)
 table.insert(cm.on_build, function() world_built = true; ensure_npcs() end)

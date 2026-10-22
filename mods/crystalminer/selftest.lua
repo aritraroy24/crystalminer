@@ -364,6 +364,13 @@ local function run()
 	local old_npc = core.add_entity({ x = 0, y = 1, z = -20 }, "crystalminer:museum_visitor",
 		core.serialize({ slot = 1, home = { x = 0, y = 1, z = -20 } }))
 	check("NPCs: one saved in the map by an earlier version removes itself", old_npc == nil or old_npc:get_pos() == nil)
+	local blocked = {}
+	for _, p in ipairs(cm.npc_places) do
+		core.load_area({ x = p.x, y = p.y, z = p.z }, { x = p.x, y = p.y + 1, z = p.z })
+		local here, above = core.get_node(p).name, core.get_node({ x = p.x, y = p.y + 1, z = p.z }).name
+		if here ~= "air" or above ~= "air" then blocked[#blocked + 1] = core.pos_to_string(p) .. " " .. here .. "/" .. above end
+	end
+	check("NPCs: every NPC stands in free space, not inside furniture", #blocked == 0, table.concat(blocked, ", "))
 	-- Guides: a first arrival marks the place as guided (the window opens a moment later), and the
 	-- window carries the steps; the Try-it Pad has its labels.
 	for _, f in ipairs(cm.on_area) do f("guidetester", "fourfold_tower", live("fourfold_tower")) end
