@@ -6,6 +6,9 @@ the lesson and sign texts in mods/crystalminer/content.lua and mods/crystalminer
 README.md, docs/ and menu/) are licensed under the Creative Commons
 Attribution-ShareAlike 4.0 International licence (CC BY-SA 4.0):
 
+The generated exhibit atom textures use the Jmol element-colour convention;
+the colour values are factual data from ASE's jmol_colors table, not artwork.
+
     https://creativecommons.org/licenses/by-sa/4.0/
     Full legal code: https://creativecommons.org/licenses/by-sa/4.0/legalcode
 
@@ -19,3 +22,10 @@ Exception: the lettering on signs.
 The glyph images crystalminer_{b52,c44,b34,b26,b17,r24,r20,r18,r16}_*
 (and the lettering in the generated figures) are rendered from the DejaVu fonts, which are
 derived from Bitstream Vera. See LICENSE.fonts for their licence, which must be kept with them.
+
+Materials Project sample data
+-----------------------------
+The baked structure samples in data/mpcontribs/ and mods/crystalminer/exhibit_data.lua were
+fetched from the Materials Project MPContribs API /structures/ endpoint. The licence of each
+contribution's project must be confirmed and credited before release; this project does not
+claim a licence for those contributions.

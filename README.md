@@ -109,6 +109,25 @@ first start of a new world builds the museum and all 23 worlds, which takes abou
 
 All blocks in your inventory are free and never run out.
 
+### Live crystal exhibits
+
+The six permanent exhibit portals load a new, randomly selected bulk structure each time a room
+is entered; `/exhibit list` shows the current structure in each room for teachers. Add
+`crystalminer` to `secure.http_mods` in `minetest.conf` (without it the game may not make web
+requests, and each room shows one of three saved samples). The Materials Project key is read from
+the `crystalminer.mp_api_key` setting, then the `CRYSTALMINER_MP_API_KEY` environment variable,
+then `MP_API` (or `MP_API_KEY`) in the git-ignored `.env` file in the game folder.
+The key is never shown or stored in exhibit records. Candidates with the same reduced chemical
+formula or the same anonymous reduced stoichiometry (for example, any other ABO3 structure) as an
+existing exhibit are rejected. The game chooses a random element symbol, asks for a filtered
+structure-name list, then requests only the selected structure ids; no student data is sent.
+Each room load permits at most 30 filtered-list requests and 60 structure requests, with a
+20-second request timeout and a 60-second overall budget; at most two room loads run at once.
+
+Some exhibit files are generated and not committed: the baked sample structures, the element
+colour table, 96 atom textures and the atom mesh. After cloning, run `sh tools/make_exhibit_assets.sh`
+(Python 3, standard library only) before starting the game or the tests.
+
 ### The museum
 
 Players start in the foyer of the **Museum of Crystals and Symmetry**, a building with a glass
