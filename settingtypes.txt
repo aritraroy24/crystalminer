@@ -16,7 +16,7 @@ crystalminer.anthropic_api_key (Tutor: Anthropic API key) string
 # Address of the API, up to and including /v1, when it is not the provider's usual one: for openai_compatible, hosted_vllm, a proxy, or a server elsewhere. Ollama on this computer: http://localhost:11434/v1
 crystalminer.tutor_base_url (Tutor: base URL) string http://localhost:11434/v1
 
-# API key for the model's provider, sent as "Authorization: Bearer <key>". When empty, the provider's own variable (DEEPSEEK_API_KEY, OPENAI_API_KEY, ...) and then CRYSTALMINER_TUTOR_API_KEY are used. Leave it empty for a local server such as Ollama.
+# API key for the model's provider, sent as "Authorization: Bearer <key>". When empty, the provider's own variable (DEEPSEEK_API_KEY, OPENAI_API_KEY, ...) and then CRYSTALMINER_TUTOR_API_KEY are used. Leave it empty for a local server such as Ollama. For anthropic/... models the Anthropic API key above and ANTHROPIC_API_KEY come first.
 crystalminer.tutor_api_key (Tutor: API key) string
 
 # OpenAI-compatible provider: seconds to wait for an answer. Local models on a slow CPU may need more.

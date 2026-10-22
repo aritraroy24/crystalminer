@@ -340,6 +340,16 @@ T.PROVIDERS = {
 T.PROVIDERS.ollama_chat = T.PROVIDERS.ollama   -- LiteLLM's other name for Ollama
 T.DEFAULT_MODEL = "deepseek/deepseek-flash"
 
+--- The entry of T.PROVIDERS whose usual address is base (without a trailing slash), or nil. Only hosted services: a local address says nothing about which server runs there.
+function T.provider_at(base)
+	if type(base) ~= "string" then return nil end
+	base = base:gsub("^%s+", ""):gsub("[%s/]+$", "")
+	for _, p in pairs(T.PROVIDERS) do
+		if p.base and not p.keyless and p.base == base then return p end
+	end
+	return nil
+end
+
 --- The provider names, sorted, for messages.
 function T.provider_names()
 	local list = {}
@@ -368,10 +378,11 @@ local function trim(s)
 end
 
 --- Settings for the Messages API (Claude). model: the model's name, without "anthropic/".
+-- The key is read as before the provider/model setting (the Anthropic key setting, then ANTHROPIC_API_KEY), and only then from the shared Tutor: API key, which may still hold another provider's key from an earlier setup.
 local function anthropic_config(get, getenv, model)
 	local key = get("crystalminer.anthropic_api_key")
-	if not key or key == "" then key = get("crystalminer.tutor_api_key") end
 	if not key or key == "" then key = getenv("ANTHROPIC_API_KEY") end
+	if not key or key == "" then key = get("crystalminer.tutor_api_key") end
 	local cfg = { provider = "anthropic", prefix = "anthropic", service = T.PROVIDERS.anthropic.name, url = T.URL,
 		model = model ~= "" and model or T.MODEL, api_key = key, timeout = T.ANTHROPIC_TIMEOUT }
 	if key == nil or key == "" then return cfg, "no API key set" end
@@ -392,9 +403,12 @@ local function openai_config(get, getenv, p, prefix, model)
 		if p then base = p.base or "" else base = T.DEFAULT_BASE_URL end
 	end
 	base = base:gsub("/+$", "")
+	-- openai_compatible at a provider's own address (an older setup, e.g. https://api.deepseek.com): that provider's name is shown, and its key variable is the last place a key is looked for.
+	local known = not p and T.provider_at(base) or nil
 	local key = trim(get("crystalminer.tutor_api_key"))
 	if key == "" and p and p.env then key = trim(getenv(p.env)) end
 	if key == "" then key = trim(getenv("CRYSTALMINER_TUTOR_API_KEY")) end
+	if key == "" and known and known.env then key = trim(getenv(known.env)) end
 	local timeout = math.floor(tonumber(get("crystalminer.tutor_timeout")) or T.OPENAI_TIMEOUT)
 	local max_tokens = tonumber(get("crystalminer.tutor_max_tokens"))
 	if max_tokens then max_tokens = math.max(16, math.min(T.MAX_TOKENS, math.floor(max_tokens))) end
@@ -402,7 +416,7 @@ local function openai_config(get, getenv, p, prefix, model)
 	local cfg = {
 		provider = "openai_compatible",
 		prefix = prefix,
-		service = p and p.name or nil,
+		service = (p or known) and (p or known).name or nil,
 		base_url = base,
 		url = base .. "/chat/completions",
 		model = model,
@@ -446,6 +460,8 @@ function T.config(get, getenv)
 		return nil, "crystalminer.tutor_model '" .. spec .. "' needs a provider in front, as in deepseek/deepseek-flash or ollama/llama3.2 (providers: " .. T.provider_names() .. ")"
 	end
 	local p = T.PROVIDERS[provider]
+	-- Before the provider/model setting, the anthropic provider ignored crystalminer.tutor_model (it was the openai_compatible model). A leftover name that is not Claude's must not be sent to the Claude API.
+	if p and p.anthropic and not prefix and not trim(model):lower():match("^claude") then model = "" end
 	if not p then
 		return nil, "unknown crystalminer.tutor_provider '" .. provider .. "' (use openai_compatible or one of: " .. T.provider_names() .. ")"
 	end
@@ -547,11 +563,29 @@ function T.http_error_message(code)
 	return "The tutor is unavailable."
 end
 
+--- text with anything that looks like an API key replaced by "***": the key itself (when given), "sk-..." keys, a Bearer token, and any long run of letters, digits, "-" and "_" with a digit in it (keys such as DeepSeek's, Gemini's "AIza...", Groq's "gsk_..."). Used on error messages that come from a provider, which may quote the key that was sent.
+function T.redact(text, key)
+	if type(text) ~= "string" then return text end
+	if type(key) == "string" and #key >= 4 then
+		local i = text:find(key, 1, true)
+		while i do
+			text = text:sub(1, i - 1) .. "***" .. text:sub(i + #key)
+			i = text:find(key, i + 3, true)
+		end
+	end
+	text = text:gsub("[Bb]earer%s+[^%s\"',;]+", "Bearer ***")
+	text = text:gsub("sk%-[%w%-_%.%*]+", "sk-***")
+	text = text:gsub("[%w%-_]+", function(w)
+		if #w >= 20 and w:find("%d") then return "***" end
+	end)
+	return text
+end
+
 local function error_detail(response)
 	local err = response and response.error
 	local message = type(err) == "table" and err.message or nil
 	if type(message) ~= "string" or message == "" then return nil end
-	return message:gsub("[%c\r\n]", " "):sub(1, 240)
+	return (T.redact((message:gsub("[%c\r\n]", " "))):sub(1, 240))
 end
 
 --- Text of a Chat Completions response, or nil and a message for the player. code is the HTTP status.
@@ -626,7 +660,7 @@ function T.openai_fetch(http, cfg, body, encode, decode, done)
 			return
 		end
 		local text, err = T.openai_response_text(parsed, code)
-		done(text, err, text == nil and retryable)
+		done(text, err and T.redact(err, cfg.api_key), text == nil and retryable)
 	end)
 end
 

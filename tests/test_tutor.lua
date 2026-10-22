@@ -592,4 +592,86 @@ T.run("a limiter can have a shorter wait between questions", function()
 	T.ok(Tutor.try_start(lim, "ann", 105))
 end)
 
+-- Settings written before the provider/model setting (tutor_provider anthropic or openai_compatible) must keep working.
+T.run("old settings: anthropic with its key is still Claude, whatever tutor_model holds", function()
+	local A = { ["crystalminer.tutor_provider"] = "anthropic", ["crystalminer.anthropic_api_key"] = "sk-ant-old" }
+	local cfg, off = Tutor.config(settings(A), no_env)
+	T.eq(off, nil); T.eq(cfg.provider, "anthropic"); T.eq(cfg.url, "https://api.anthropic.com/v1/messages")
+	T.eq(cfg.model, "claude-opus-5-5"); T.eq(cfg.api_key, "sk-ant-old")
+	-- A model name left over from an earlier openai_compatible setup was ignored by the anthropic provider, and still is.
+	A["crystalminer.tutor_model"] = "llama3.2"
+	cfg, off = Tutor.config(settings(A), no_env)
+	T.eq(off, nil); T.eq(cfg.provider, "anthropic"); T.eq(cfg.model, "claude-opus-5-5")
+	T.eq(Tutor.ask_request(cfg, "Why?", 1, nil).model, "claude-opus-5-5")
+	-- A Claude model name is used.
+	A["crystalminer.tutor_model"] = "claude-sonnet-5-5"
+	T.eq(Tutor.config(settings(A), no_env).model, "claude-sonnet-5-5")
+	-- ANTHROPIC_API_KEY comes before the shared Tutor: API key, which may hold another provider's key.
+	local B = { ["crystalminer.tutor_provider"] = "anthropic", ["crystalminer.tutor_api_key"] = "ds-leftover" }
+	cfg = Tutor.config(settings(B), env({ ANTHROPIC_API_KEY = "a-env" }))
+	T.eq(cfg.api_key, "a-env")
+	cfg, off = Tutor.config(settings(B), no_env)
+	T.eq(off, nil); T.eq(cfg.api_key, "ds-leftover")
+end)
+
+T.run("old settings: openai_compatible at https://api.deepseek.com is DeepSeek", function()
+	local D = { ["crystalminer.tutor_provider"] = "openai_compatible", ["crystalminer.tutor_base_url"] = "https://api.deepseek.com",
+		["crystalminer.tutor_model"] = "deepseek-flash" }
+	-- The key in the setting, in CRYSTALMINER_TUTOR_API_KEY (as before), or in DEEPSEEK_API_KEY (as the README now says).
+	for _, case in ipairs({
+		{ settings = { ["crystalminer.tutor_api_key"] = "k-set" }, env = {}, key = "k-set" },
+		{ settings = {}, env = { CRYSTALMINER_TUTOR_API_KEY = "k-cm" }, key = "k-cm" },
+		{ settings = {}, env = { DEEPSEEK_API_KEY = "k-ds" }, key = "k-ds" },
+		{ settings = {}, env = { DEEPSEEK_API_KEY = "k-ds", CRYSTALMINER_TUTOR_API_KEY = "k-cm" }, key = "k-cm" },
+	}) do
+		local s = {}
+		for k, v in pairs(D) do s[k] = v end
+		for k, v in pairs(case.settings) do s[k] = v end
+		local cfg, off = Tutor.config(settings(s), env(case.env))
+		T.eq(off, nil)
+		T.eq(cfg.provider, "openai_compatible"); T.eq(cfg.service, "DeepSeek")
+		T.eq(cfg.url, "https://api.deepseek.com/chat/completions"); T.eq(cfg.model, "deepseek-flash")
+		T.eq(cfg.api_key, case.key)
+		T.ok(not Tutor.describe(cfg):find(case.key, 1, true), "the key must never be logged")
+		local req
+		Tutor.send({ fetch = function(r) req = r end }, cfg, Tutor.chat_request(cfg, {}, "Why?", 1, nil),
+			function(b) return ser(b) end, nil, function() end)
+		T.eq(req.url, "https://api.deepseek.com/chat/completions")
+		T.ok(req.data:find('model="deepseek-flash"', 1, true), req.data)
+		T.eq(req.extra_headers[2], "Authorization: Bearer " .. case.key)
+	end
+	-- With a trailing slash, and with no key at all (as before: the server answers 401, the tutor is not switched off).
+	D["crystalminer.tutor_base_url"] = "https://api.deepseek.com/"
+	local cfg, off = Tutor.config(settings(D), no_env)
+	T.eq(off, nil); T.eq(cfg.url, "https://api.deepseek.com/chat/completions"); T.eq(cfg.api_key, nil)
+	-- A local server is not taken for a hosted provider.
+	cfg = Tutor.config(settings({ ["crystalminer.tutor_provider"] = "openai_compatible", ["crystalminer.tutor_model"] = "m",
+		["crystalminer.tutor_base_url"] = "http://127.0.0.1:8000/v1" }), env({ DEEPSEEK_API_KEY = "k-ds" }))
+	T.eq(cfg.service, nil); T.eq(cfg.api_key, nil)
+end)
+
+T.run("provider error details never show an API key", function()
+	local key = "sk-0123456789abcdef0123456789abcdef"
+	local _, err = Tutor.openai_response_text({ error = { message = "Authentication Fails, Your api key: " .. key .. " is invalid" } }, 401)
+	T.ok(not err:find("0123456789abcdef", 1, true), err)
+	T.ok(err:find("refused the API key", 1, true), err)
+	for _, m in ipairs({ "Incorrect API key provided: sk-proj-AbCdEf12****wxyz.", "bad header Bearer abc.def-ghi",
+		"API key not valid: AIzaSyA1b2C3d4E5f6G7h8I9j0KlMnOpQrStUv", "Invalid API Key gsk_9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a" }) do
+		_, err = Tutor.openai_response_text({ error = { message = m } }, 401)
+		T.ok(not err:find("AbCdEf12", 1, true) and not err:find("abc.def", 1, true) and not err:find("AIzaSy", 1, true)
+			and not err:find("gsk_9f8e", 1, true), err)
+	end
+	-- The configured key itself, even a short one that looks like nothing in particular, through openai_fetch.
+	local cfg = Tutor.config(settings({ ["crystalminer.tutor_provider"] = "openai_compatible", ["crystalminer.tutor_model"] = "m",
+		["crystalminer.tutor_api_key"] = "hunter2key" }), no_env)
+	local got
+	Tutor.openai_fetch({ fetch = function(_, cb) cb({ succeeded = true, code = 401,
+		data = '{"error":{"message":"key hunter2key is not valid"}}' }) end }, cfg, {}, function() return "B" end,
+		json_decode, function(_, e) got = e end)
+	T.ok(got and not got:find("hunter2key", 1, true) and got:find("***", 1, true), got)
+	-- An ordinary message is left as it is.
+	_, err = Tutor.openai_response_text({ error = { message = "model \"llama3.2\" not found" } }, 404)
+	T.ok(err:find("llama3.2", 1, true), err)
+end)
+
 T.finish()
